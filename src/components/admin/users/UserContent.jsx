@@ -230,7 +230,6 @@ const updateUserPermissions = async (userId, permissions) => {
               </tbody>
             </table>
           </div>
-        </div>
       );
 
     default:
