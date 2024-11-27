@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
 import { doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, deleteUser } from 'firebase/auth';
+import { createUserWithEmailAndPassword, deleteUser, updatePassword } from 'firebase/auth';
 import { db, auth } from '../../../firebase/config';
 import { motion } from 'framer-motion';
 import { Lock, Unlock, Key, UserPlus, Trash } from 'lucide-react';
+
+// Define the PERMISSIONS object
+const PERMISSIONS = {
+  'View Users': 'view-users',
+  'Edit Users': 'edit-users',
+  'Delete Users': 'delete-users',
+  'Manage Permissions': 'manage-permissions',
+  // Add more permissions as needed
+};
 
 const UserContent = ({ selectedSubItem, users, fetchUsers }) => {
   const [newUser, setNewUser] = useState({ email: '', password: '', role: 'user' });
@@ -50,7 +59,7 @@ const UserContent = ({ selectedSubItem, users, fetchUsers }) => {
     }
   };
 
-  const deleteUser = async (userId) => {
+  const deleteUser = async (userId, userEmail) => {
     try {
       await deleteDoc(doc(db, 'user_roles', userId));
       await deleteUser(auth.currentUser);
@@ -104,7 +113,7 @@ const UserContent = ({ selectedSubItem, users, fetchUsers }) => {
                         <Key className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => deleteUser(user.id)}
+                        onClick={() => deleteUser(user.id, user.email)}
                         className="p-2 rounded-lg hover:bg-gray-100 text-red-500"
                       >
                         <Trash className="h-4 w-4" />
