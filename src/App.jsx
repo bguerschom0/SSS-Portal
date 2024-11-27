@@ -1,7 +1,6 @@
 // src/App.jsx
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './config/firebase';
 import { checkPermission } from './services/firestore-structure';
@@ -11,11 +10,11 @@ import LoginPage from './components/auth/LoginPage';
 import RegisterPage from './components/auth/RegisterPage';
 import WelcomePage from './components/dashboard/WelcomePage';
 import AdminPage from './components/dashboard/AdminPage';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Auth Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-// Session timeout duration (30 minutes)
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
 function AppContent() {
@@ -23,8 +22,8 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState('welcome');
   const [currentSubItem, setCurrentSubItem] = useState(null);
   const [lastActivity, setLastActivity] = useState(Date.now());
+  const [isCheckingPermission, setIsCheckingPermission] = useState(false);
 
-  // Check session timeout
   useEffect(() => {
     if (user) {
       const checkSession = setInterval(() => {
@@ -33,37 +32,25 @@ function AppContent() {
           alert('Session expired. Please login again.');
         }
       }, 1000);
-
       return () => clearInterval(checkSession);
     }
   }, [user, lastActivity]);
 
-  // Activity tracking
   useEffect(() => {
     const updateActivity = () => setLastActivity(Date.now());
-    window.addEventListener('mousemove', updateActivity);
-    window.addEventListener('keypress', updateActivity);
-    window.addEventListener('click', updateActivity);
-
-    return () => {
-      window.removeEventListener('mousemove', updateActivity);
-      window.removeEventListener('keypress', updateActivity);
-      window.removeEventListener('click', updateActivity);
-    };
+    const events = ['mousemove', 'keypress', 'click'];
+    events.forEach(event => window.addEventListener(event, updateActivity));
+    return () => events.forEach(event => 
+      window.removeEventListener(event, updateActivity)
+    );
   }, []);
 
-  // Restore last page on refresh
   useEffect(() => {
     if (user) {
       const savedPage = localStorage.getItem('currentPage');
       const savedSubItem = localStorage.getItem('currentSubItem');
-      
-      if (savedPage) {
-        setCurrentPage(savedPage);
-      }
-      if (savedSubItem) {
-        setCurrentSubItem(JSON.parse(savedSubItem));
-      }
+      if (savedPage) setCurrentPage(savedPage);
+      if (savedSubItem) setCurrentSubItem(JSON.parse(savedSubItem));
     }
   }, [user]);
 
@@ -81,9 +68,11 @@ function AppContent() {
 
   const handleNavigate = async (page, subItem = null) => {
     try {
-      if (page !== 'welcome' && page !== 'admin') {
+      setIsCheckingPermission(true);
+      
+      if (user?.role !== 'admin' && page !== 'welcome' && page !== 'admin') {
         const hasPermission = await checkPermission(user.uid, page, subItem);
-        if (!hasPermission && user?.role !== 'admin') {
+        if (!hasPermission) {
           alert('You do not have permission to access this page');
           return;
         }
@@ -102,6 +91,29 @@ function AppContent() {
     } catch (error) {
       console.error('Navigation error:', error);
       alert('Error accessing page');
+    } finally {
+      setIsCheckingPermission(false);
+    }
+  };
+
+  const renderPage = () => {
+    if (isCheckingPermission) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-emerald-500"></div>
+        </div>
+      );
+    }
+
+    switch (currentPage) {
+      case 'welcome':
+        return <WelcomePage onNavigate={handleNavigate} onLogout={handleLogout} />;
+      case 'admin':
+        return user?.role === 'admin' ? 
+          <AdminPage onNavigate={handleNavigate} onLogout={handleLogout} /> : 
+          <Navigate to="/" replace />;
+      default:
+        return <Navigate to="/" replace />;
     }
   };
 
@@ -133,11 +145,13 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
