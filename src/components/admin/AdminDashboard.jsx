@@ -19,6 +19,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebase/config';
 import { PERMISSIONS, getUserRole } from '../../models/userRoles';
+import UserContent from './users/UserContent';
 
 const menuItems = [
   {
@@ -207,7 +208,6 @@ const AdminDashboard = () => {
       );
     }
 
-    // Render specific content based on selectedCard and selectedSubItem
     switch (selectedCard) {
       case 'users':
         return (
@@ -221,53 +221,30 @@ const AdminDashboard = () => {
                 Back
               </button>
             </div>
-            
-            {selectedSubItem === 'User Permissions' && (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-left">
-                      <th className="pb-4">User</th>
-                      <th className="pb-4">Role</th>
-                      <th className="pb-4">Permissions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map(user => (
-                      <tr key={user.id} className="border-t">
-                        <td className="py-4">{user.email}</td>
-                        <td>{user.role}</td>
-                        <td>
-                          <div className="flex flex-wrap gap-2">
-                            {Object.entries(PERMISSIONS).map(([key, value]) => (
-                              <label key={key} className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={user.permissions?.includes(value)}
-                                  onChange={(e) => {
-                                    const newPermissions = e.target.checked
-                                      ? [...(user.permissions || []), value]
-                                      : (user.permissions || []).filter(p => p !== value);
-                                    updateUserPermissions(user.id, newPermissions);
-                                  }}
-                                  className="mr-2"
-                                />
-                                {key}
-                              </label>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Add other user management content based on selectedSubItem */}
+            <UserContent 
+              selectedSubItem={selectedSubItem} 
+              users={users} 
+              fetchUsers={fetchUsers}
+            />
           </div>
         );
-      // Add cases for other cards (roles, departments, etc.)
+
+      case 'roles':
+        return (
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">{selectedSubItem}</h2>
+              <button
+                onClick={() => setSelectedCard(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Back
+              </button>
+            </div>
+            <p>Role management content coming soon...</p>
+          </div>
+        );
+
       default:
         return (
           <div className="bg-white rounded-xl shadow-sm p-6">
@@ -297,6 +274,7 @@ const AdminDashboard = () => {
               alt="Logo"
               className="h-8 w-auto"
             />
+            <span className="text-xl font-semibold text-gray-800">Admin Portal</span>
           </div>
 
           <div className="flex items-center space-x-6">
