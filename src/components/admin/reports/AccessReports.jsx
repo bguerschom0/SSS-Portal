@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { db } from '../../../firebase/config';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { formatDate } from '../../../utils/dateUtils';
+import { formatDate } from '../../../../utils/dateUtils';
 
 const AccessReports = () => {
   const [accessReports, setAccessReports] = useState([]);
