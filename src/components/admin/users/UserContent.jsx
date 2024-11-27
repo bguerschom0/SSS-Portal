@@ -190,17 +190,7 @@ const updateUserPermissions = async (userId, permissions) => {
 
  case 'User Permissions':
       return (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">User Permissions</h2>
-            <button
-              onClick={() => setSelectedCard(null)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              Back
-            </button>
-          </div>
-          
+        
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
