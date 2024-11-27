@@ -15,6 +15,8 @@ import {
   Users,
   UserPlus
 } from 'lucide-react';
+import { signOut } from 'firebase/auth';
+import { auth } from '../../firebase/config';
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -101,6 +103,16 @@ const WelcomePage = ({ username, onLogout, onNavigate }) => {
   const handleCardClick = (index) => {
     setExpandedCard(expandedCard === index ? null : index);
   };
+
+  // Logout
+const handleLogout = async () => {
+  try {
+    await signOut(auth);
+    onLogout(); // Your existing onLogout handler
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
