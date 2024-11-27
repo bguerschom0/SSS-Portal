@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ChevronDown,
-  FileText, 
-  Settings,
-  Bell,
-  Clock,
-  Shield,
-  Users,
-  Building2,
-  Lock
-} from 'lucide-react';
+    ChevronDown,
+    FileText, 
+    Settings,
+    Bell,
+    Clock,
+    Shield,
+    Users,
+    Building2,
+    Lock,
+    User,
+    LogOut
+  } from 'lucide-react';
+  
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { auth, db } from '../../firebase/config';
 import { PERMISSIONS, getUserRole } from '../../models/userRoles';
@@ -63,6 +66,23 @@ const AdminDashboard = () => {
           ...roleData
         });
       }
+      setUsers(usersData);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setLoading(false);
+    }
+};
+
+const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      // Add your navigation logic here
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+  
 
   const handleCardClick = (index, path, subItem) => {
     setExpandedCard(expandedCard === index ? null : index);
@@ -296,5 +316,6 @@ const AdminDashboard = () => {
       </div>
     </div>
   );
+};
 
 export default AdminDashboard;
