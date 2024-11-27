@@ -27,7 +27,7 @@ const menuItems = [
   { icon: UserPlus, text: 'Visitors Management', subItems: ['New', 'Update', 'Pending'], path: 'visitors', permissions: ['visitors_new', 'visitors_update', 'visitors_pending'] },
   { icon: BarChart, text: 'Reports', subItems: ['SHR', 'BCR', 'BR', 'Access', 'Attendance', 'Visitors'], path: 'reports', permissions: ['report_shr', 'report_bcr', 'report_br', 'report_access', 'report_attendance', 'report_visitors'] }
 ];
-
+ 
 const WelcomePage = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [expandedCard, setExpandedCard] = useState(null);
