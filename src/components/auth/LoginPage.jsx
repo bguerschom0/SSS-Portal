@@ -3,19 +3,28 @@ import { motion } from 'framer-motion';
 import { User, Lock } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../firebase/config';
+import { getUserRole, createUserRole } from '../../models/userRoles';
+
 const LoginPage = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    
     try {
-      // Convert username to email format if needed
       const email = username.includes('@') ? username : `${username}@yourdomain.com`;
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      const roleData = await getUserRole(userCredential.user.uid);
+      if (!roleData) {
+        await createUserRole(userCredential.user.uid, 'user');
+      }
+      
       onLoginSuccess(username);
     } catch (error) {
       console.error('Login error:', error);
@@ -24,6 +33,7 @@ const LoginPage = ({ onLoginSuccess }) => {
       setIsLoading(false);
     }
   };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center p-4">
       <motion.div
@@ -126,4 +136,5 @@ const LoginPage = ({ onLoginSuccess }) => {
     </div>
   );
 };
+
 export default LoginPage;
