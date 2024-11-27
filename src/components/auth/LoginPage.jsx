@@ -1,43 +1,23 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, Mail } from 'lucide-react';
+import { User, Lock } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../../config/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-
+import { auth } from '../firebase/config';
+import { auth } from '../../firebase/config';
 const LoginPage = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
     try {
       // Convert username to email format if needed
       const email = username.includes('@') ? username : `${username}@yourdomain.com`;
-      
-      // Sign in user
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
-      // Get user role and permissions
-      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-      const userData = userDoc.data();
-
-      if (!userData) {
-        throw new Error('User data not found');
-      }
-
-      // Pass user data to parent component
-      onLoginSuccess({
-        uid: userCredential.user.uid,
-        email: userCredential.user.email,
-        role: userData.role || 'user',
-        permissions: userData.permissions || []
-      });
+      onLoginSuccess(username);
     } catch (error) {
       console.error('Login error:', error);
       setError('Invalid username or password');
@@ -45,7 +25,6 @@ const LoginPage = ({ onLoginSuccess }) => {
       setIsLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center p-4">
       <motion.div
@@ -68,11 +47,6 @@ const LoginPage = ({ onLoginSuccess }) => {
                 className="h-28 w-auto"
               />
             </motion.div>
-
-            <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
-              Welcome Back
-            </h2>
-
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <motion.div
@@ -83,7 +57,6 @@ const LoginPage = ({ onLoginSuccess }) => {
                   {error}
                 </motion.div>
               )}
-
               <motion.div 
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
@@ -101,12 +74,11 @@ const LoginPage = ({ onLoginSuccess }) => {
                              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
                              transition-all duration-300 ease-in-out text-base
                              hover:border-emerald-300"
-                    placeholder="Username or Email"
+                    placeholder="Username"
                     disabled={isLoading}
                   />
                 </div>
               </motion.div>
-
               <motion.div 
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
@@ -129,7 +101,6 @@ const LoginPage = ({ onLoginSuccess }) => {
                   />
                 </div>
               </motion.div>
-
               <motion.button
                 type="submit"
                 disabled={isLoading}
@@ -145,16 +116,10 @@ const LoginPage = ({ onLoginSuccess }) => {
                 whileTap={{ scale: isLoading ? 1 : 0.98 }}
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
+                transition={{ delay: 0.5 }}
               >
                 {isLoading ? 'Signing in...' : 'Sign in'}
               </motion.button>
-
-              <div className="text-center mt-6">
-                <a href="/register" className="text-emerald-600 hover:text-emerald-700 text-sm">
-                  Don't have an account? Register here
-                </a>
-              </div>
             </form>
           </div>
         </div>
@@ -162,5 +127,4 @@ const LoginPage = ({ onLoginSuccess }) => {
     </div>
   );
 };
-
 export default LoginPage;
