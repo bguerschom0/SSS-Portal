@@ -14,7 +14,7 @@ import {
   Key,
   UserPlus,
   Building2,
-  LockKeyhole
+  Lock
 } from 'lucide-react';
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../firebase/config';
@@ -43,7 +43,7 @@ const menuItems = [
     color: 'emerald'
   },
   {
-    icon: LockKeyhole,
+    icon: Lock,
     text: 'Access Control',
     subItems: ['Access Levels', 'Access Groups', 'Access Policies'],
     path: 'access',
