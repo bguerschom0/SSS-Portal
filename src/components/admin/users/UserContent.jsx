@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, deleteUser, updatePassword } from 'firebase/auth';
 import { db, auth } from '../../../firebase/config';
-import { motion } from 'framer-motion';
 import { Lock, Unlock, Key, UserPlus, Trash } from 'lucide-react';
 
 // Define the PERMISSIONS object
@@ -65,6 +64,25 @@ const UserContent = ({ selectedSubItem, users, fetchUsers }) => {
       await deleteUser(auth.currentUser);
       setSuccess('User deleted successfully');
       fetchUsers();
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  const updateUserPermissions = async (userId, permissions) => {
+    try {
+      const userRoleRef = doc(db, 'user_roles', userId);
+      const userRoleDoc = await getDoc(userRoleRef);
+
+      if (userRoleDoc.exists()) {
+        await updateDoc(userRoleRef, {
+          permissions,
+          updatedAt: new Date()
+        });
+        await fetchUsers();
+      } else {
+        setError('User role not found');
+      }
     } catch (error) {
       setError(error.message);
     }
