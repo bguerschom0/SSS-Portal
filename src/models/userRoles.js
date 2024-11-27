@@ -1,4 +1,15 @@
-// models/userRoles.js
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  serverTimestamp, 
+  collection,
+  query,
+  where,
+  getDocs 
+} from 'firebase/firestore';
+import { db } from '../firebase/config';
+
 export const ROLES = {
   ADMIN: 'admin',
   USER: 'user'
@@ -26,7 +37,7 @@ export const getDefaultPermissions = (role) => {
 };
 
 export const createUserRole = async (uid, role = ROLES.USER) => {
-  const userRoleRef = doc(db, userRolesCollection, uid);
+  const userRoleRef = doc(db, 'user_roles', uid);
   const permissions = getDefaultPermissions(role);
   
   await setDoc(userRoleRef, {
@@ -40,7 +51,17 @@ export const createUserRole = async (uid, role = ROLES.USER) => {
 };
 
 export const getUserRole = async (uid) => {
-  const userRoleRef = doc(db, userRolesCollection, uid);
+  const userRoleRef = doc(db, 'user_roles', uid);
   const snapshot = await getDoc(userRoleRef);
   return snapshot.exists() ? snapshot.data() : null;
+};
+
+export const hasPermission = (userRole, permission) => {
+  return userRole?.permissions?.includes(permission) || userRole?.role === ROLES.ADMIN;
+};
+
+export const getAllUsers = async () => {
+  const usersRef = collection(db, 'users');
+  const snapshot = await getDocs(usersRef);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
