@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, deleteUser, updatePassword } from 'firebase/auth';
 import { db, auth } from '../../../firebase/config';
 import { Lock, Unlock, Key, UserPlus, Trash } from 'lucide-react';
+import { PERMISSIONS } from '../../models/userRoles';
 
 // Define the PERMISSIONS object
 const PERMISSIONS = {
@@ -69,7 +70,7 @@ const UserContent = ({ selectedSubItem, users, fetchUsers }) => {
     }
   };
 
-  const updateUserPermissions = async (userId, permissions) => {
+const updateUserPermissions = async (userId, permissions) => {
     try {
       const userRoleRef = doc(db, 'user_roles', userId);
       const userRoleDoc = await getDoc(userRoleRef);
@@ -195,7 +196,7 @@ const UserContent = ({ selectedSubItem, users, fetchUsers }) => {
         </form>
       );
 
-    case 'User Permissions':
+ case 'User Permissions':
       return (
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex justify-between items-center mb-6">
