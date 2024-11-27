@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 
 const AccessLevels = () => {
   return (
+  return (
     <div className="flex justify-center items-center h-full">
       <motion.div
         initial={{ scale: 0 }}
@@ -20,7 +21,7 @@ const AccessLevels = () => {
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
           className="w-16 h-16 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"
         />
-      </div>
+      </motion.div>
     </div>
   );
 };
