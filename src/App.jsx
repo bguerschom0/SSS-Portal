@@ -10,7 +10,7 @@ import { checkPermission } from './services/firestore-structure';
 import LoginPage from './components/auth/LoginPage';
 import RegisterPage from './components/auth/RegisterPage';
 import WelcomePage from './components/dashboard/WelcomePage';
-import AdminPage from './components/admin/AdminPage';
+import AdminPage from './components/dashboard/AdminPage';
 
 // Auth Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
