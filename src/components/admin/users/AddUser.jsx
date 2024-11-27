@@ -3,15 +3,24 @@ import { createUserWithEmailAndPassword, updatePassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../../../firebase/config';
 import { UserPlus } from 'lucide-react';
+import { useCurrentUser } from '../../../hooks/useCurrentUser';
 
 const AddUser = ({ fetchUsers }) => {
   const [newUser, setNewUser] = useState({ email: '', password: '', role: 'user' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const { currentUser, currentUserRole } = useCurrentUser();
 
   const addUser = async (e) => {
     e.preventDefault();
+
     try {
+      // Check if the current user has permission to add new users
+      if (currentUserRole !== 'admin') {
+        setError('You do not have permission to add new users.');
+        return;
+      }
+
       const userCredential = await createUserWithEmailAndPassword(auth, newUser.email, newUser.password);
       await setDoc(doc(db, 'user_roles', userCredential.user.uid), {
         role: newUser.role,
