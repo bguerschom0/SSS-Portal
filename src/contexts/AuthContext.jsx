@@ -14,24 +14,17 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          setUserProfile({ uid: user.uid, ...userDoc.data() });
-        }
+        setUserProfile(userDoc.exists() ? { uid: user.uid, ...userDoc.data() } : null);
       }
       setCurrentUser(user);
       setLoading(false);
     });
-
     return unsubscribe;
   }, []);
 
-  const hasPermission = (module, action) => {
-    return userProfile?.permissions?.[module]?.includes(action);
-  };
+  const hasPermission = (module, action) => userProfile?.permissions?.[module]?.includes(action);
 
-  const isAdmin = () => {
-    return userProfile?.role === 'admin';
-  };
+  const isAdmin = () => userProfile?.role === 'admin';
 
   return (
     <AuthContext.Provider value={{ currentUser, userProfile, hasPermission, isAdmin }}>
