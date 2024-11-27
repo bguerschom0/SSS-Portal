@@ -3,7 +3,7 @@ import { doc, getDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, deleteUser, updatePassword } from 'firebase/auth';
 import { db, auth } from '../../../firebase/config';
 import { Lock, Unlock, Key, UserPlus, Trash } from 'lucide-react';
-import { PERMISSIONS } from '../../models/userRoles';
+import { PERMISSIONS } from '../../../models/userRoles';
 
 
 const UserContent = ({ selectedSubItem, users, fetchUsers }) => {
