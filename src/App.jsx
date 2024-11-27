@@ -1,66 +1,40 @@
-
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { auth } from './firebase/config';
+import { getUserRole } from './models/userRoles';
 import LoginPage from './components/auth/LoginPage';
-import WelcomePage from './components/dashboard/WelcomePage';
-import StakeHolder from './components/dashboard/StakeHolder';
-import BackgroundCheck from './components/dashboard/BackgroundCheck';
-import BadgeRequest from './components/dashboard/BadgeRequest';
-import Reports from './components/dashboard/Reports';
-import AccessRequest from './components/dashboard/AccessRequest';
-import Attendance from './components/dashboard/Attendance';
-import VisitorsManagement from './components/dashboard/VisitorsManagement';
+import AdminDashboard from './components/admin/AdminDashboard';
+import UserDashboard from './components/dashboard/UserDashboard';
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentPage, setCurrentPage] = useState('welcome');
-  const [username, setUsername] = useState('');
-  const [currentSubItem, setCurrentSubItem] = useState(null);
-  const handleLoginSuccess = (user) => {
-    setUsername(user);
-    setIsLoggedIn(true);
-  };
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUsername('');
-    setCurrentPage('welcome');
-    setCurrentSubItem(null);
-  };
-  const handleNavigate = (page, subItem = null) => {
-    setCurrentPage(page);
-    setCurrentSubItem(subItem);
-  };
-  if (!isLoggedIn) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  const [userRole, setUserRole] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        const roleData = await getUserRole(user.uid);
+        setUserRole(roleData);
+        setIsLoggedIn(true);
+      } else {
+        setUserRole(null);
+        setIsLoggedIn(false);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>;
   }
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'stakeholder':
-        return <StakeHolder onNavigate={handleNavigate} subItem={currentSubItem} />;
-      case 'background':
-        return <BackgroundCheck onNavigate={handleNavigate} subItem={currentSubItem} />;
-      case 'badge':
-        return <BadgeRequest onNavigate={handleNavigate} subItem={currentSubItem} />;
-      case 'reports':
-        return <Reports onNavigate={handleNavigate} subItem={currentSubItem} />;
-      case 'access':
-        return <AccessRequest onNavigate={handleNavigate} subItem={currentSubItem} />;
-      case 'attendance':
-        return <Attendance onNavigate={handleNavigate} subItem={currentSubItem} />;
-      case 'visitors':
-        return <VisitorsManagement onNavigate={handleNavigate} subItem={currentSubItem} />;
-      default:
-        return (
-          <WelcomePage 
-            username={username} 
-            onLogout={handleLogout}
-            onNavigate={handleNavigate}
-          />
-        );
-    }
-  };
-  return (
-    <div>
-      {renderPage()}
-    </div>
-  );
+
+  if (!isLoggedIn) {
+    return <LoginPage />;
+  }
+
+  return userRole?.role === 'admin' ? <AdminDashboard /> : <UserDashboard userRole={userRole} />;
 }
+
 export default App;
