@@ -15,4 +15,15 @@ const EmailSettings = () => {
           This page is currently under development. Please check back soon!
         </p>
         <motion.div
-          initial
+          initial={{ rotate: 0 }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="w-16 h-16 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"
+        />
+      </motion.div>
+    </div>
+  );
+};
+
+
+export default EmailSettings;
