@@ -1,84 +1,164 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { auth } from '../../config/firebase';
+import { motion } from 'framer-motion';
+import { User, Lock, Mail } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '../../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
-const LoginPage = () => {
-  const [email, setEmail] = useState('');
+const LoginPage = ({ onLoginSuccess }) => {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate('/dashboard');
+      // Convert username to email format if needed
+      const email = username.includes('@') ? username : `${username}@yourdomain.com`;
+      
+      // Sign in user
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Get user role and permissions
+      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+      const userData = userDoc.data();
+
+      if (!userData) {
+        throw new Error('User data not found');
+      }
+
+      // Pass user data to parent component
+      onLoginSuccess({
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        role: userData.role || 'user',
+        permissions: userData.permissions || []
+      });
     } catch (error) {
-      setError(error.message);
+      console.error('Login error:', error);
+      setError('Invalid username or password');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6">Sign In</h2>
-        {error && (
-          <div className="bg-red-50 text-red-500 p-3 rounded-lg mb-4">
-            {error}
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="w-full max-w-lg"
+      >
+        <div className="w-full bg-white rounded-xl shadow-2xl overflow-hidden">
+          <div className="p-10">
+            <motion.div 
+              className="flex justify-center mb-10"
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <img 
+                src="/logo.png"
+                alt="Logo"
+                className="h-28 w-auto"
+              />
+            </motion.div>
+
+            <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
+              Welcome Back
+            </h2>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="bg-red-50 text-red-500 p-3 rounded-lg text-sm"
+                >
+                  {error}
+                </motion.div>
+              )}
+
+              <motion.div 
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <User className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-lg 
+                             focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
+                             transition-all duration-300 ease-in-out text-base
+                             hover:border-emerald-300"
+                    placeholder="Username or Email"
+                    disabled={isLoading}
+                  />
+                </div>
+              </motion.div>
+
+              <motion.div 
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Lock className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-lg 
+                             focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
+                             transition-all duration-300 ease-in-out text-base
+                             hover:border-emerald-300"
+                    placeholder="Password"
+                    disabled={isLoading}
+                  />
+                </div>
+              </motion.div>
+
+              <motion.button
+                type="submit"
+                disabled={isLoading}
+                className={`w-full bg-emerald-600 text-white py-4 px-6 rounded-lg
+                         hover:bg-emerald-700 focus:outline-none focus:ring-2 
+                         focus:ring-emerald-500 focus:ring-offset-2 
+                         transform transition-all duration-200 ease-in-out
+                         hover:scale-[1.02] active:scale-[0.98]
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         font-medium text-lg shadow-lg
+                         ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                whileHover={{ scale: isLoading ? 1 : 1.02 }}
+                whileTap={{ scale: isLoading ? 1 : 0.98 }}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                {isLoading ? 'Signing in...' : 'Sign in'}
+              </motion.button>
+
+              <div className="text-center mt-6">
+                <a href="/register" className="text-emerald-600 hover:text-emerald-700 text-sm">
+                  Don't have an account? Register here
+                </a>
+              </div>
+            </form>
           </div>
-        )}
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              placeholder="Enter your email"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              placeholder="Enter your password"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            className={`w-full bg-emerald-600 text-white py-3 px-6 rounded-lg hover:bg-emerald-700 transition ${
-              isLoading ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Signing In...' : 'Sign In'}
-          </button>
-        </form>
-        <div className="text-center mt-4">
-          <Link to="/register" className="text-emerald-600 hover:text-emerald-700 transition">
-            Don't have an account? Register
-          </Link>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
