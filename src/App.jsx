@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { auth } from './firebase/config';
-import { getUserRole } from './models/userRoles';
+import { getUserRole, createUserRole } from './models/userRoles';
 import LoginPage from './components/auth/LoginPage';
 import AdminDashboard from './components/admin/AdminDashboard';
-import UserDashboard from './components/dashboard/WelcomePage';
+import WelcomePage from './components/dashboard/WelcomePage';
 import { motion } from 'framer-motion';
 import { Loader } from 'lucide-react';
 
@@ -11,14 +11,23 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
+        setUser(user);
         const roleData = await getUserRole(user.uid);
-        setUserRole(roleData);
+        if (roleData) {
+          setUserRole(roleData);
+        } else {
+          // Create default role if none exists
+          const defaultRole = await createUserRole(user.uid, 'user');
+          setUserRole(defaultRole);
+        }
         setIsLoggedIn(true);
       } else {
+        setUser(null);
         setUserRole(null);
         setIsLoggedIn(false);
       }
@@ -27,6 +36,21 @@ function App() {
 
     return () => unsubscribe();
   }, []);
+
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      setIsLoggedIn(false);
+      setUserRole(null);
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -42,13 +66,17 @@ function App() {
   }
 
   if (!isLoggedIn) {
-    return <LoginPage />;
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
   return userRole?.role === 'admin' ? (
     <AdminDashboard />
   ) : (
-    <UserDashboard userRole={userRole} />
+    <WelcomePage 
+      username={user?.email} 
+      onLogout={handleLogout} 
+      userRole={userRole}
+    />
   );
 }
 
