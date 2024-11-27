@@ -5,6 +5,7 @@ import LoginPage from './components/auth/LoginPage';
 import RegisterPage from './components/auth/RegisterPage';
 import WelcomePage from './components/dashboard/WelcomePage';
 import AdminPage from './components/dashboard/AdminPage';
+import GlobalErrorBoundary from './components/error/GlobalErrorBoundary';
 
 const LoadingSpinner = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -15,6 +16,10 @@ const LoadingSpinner = () => (
 function App() {
   const { currentUser } = useAuth();
 
+  if (!currentUser) {
+    return <LoadingSpinner />;
+  }
+
   return (
     <AuthProvider>
       <Router>
@@ -22,14 +27,13 @@ function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            {currentUser ? (
+            {currentUser && (
               <>
                 <Route path="/dashboard" element={<WelcomePage />} />
                 <Route path="/admin" element={<AdminPage />} />
               </>
-            ) : (
-              <Route path="*" element={<Navigate to="/login" />} />
             )}
+            <Route path="*" element={<Navigate to="/login" />} />
           </Routes>
         </Suspense>
       </Router>
