@@ -23,7 +23,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const hasPermission = (module, action) => userProfile?.permissions?.[module]?.includes(action);
-
   const isAdmin = () => userProfile?.role === 'admin';
 
   return (
@@ -32,3 +31,5 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+export const useAuth = () => React.useContext(AuthContext);
