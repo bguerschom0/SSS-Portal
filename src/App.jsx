@@ -3,7 +3,9 @@ import { auth } from './firebase/config';
 import { getUserRole } from './models/userRoles';
 import LoginPage from './components/auth/LoginPage';
 import AdminDashboard from './components/admin/AdminDashboard';
-import UserDashboard from './components/dashboard/UserDashboard';
+import UserDashboard from './components/dashboard/WelcomePage';
+import { motion } from 'framer-motion';
+import { Loader } from 'lucide-react';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -27,14 +29,27 @@ function App() {
   }, []);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        >
+          <Loader className="h-8 w-8 text-emerald-500" />
+        </motion.div>
+      </div>
+    );
   }
 
   if (!isLoggedIn) {
     return <LoginPage />;
   }
 
-  return userRole?.role === 'admin' ? <AdminDashboard /> : <UserDashboard userRole={userRole} />;
+  return userRole?.role === 'admin' ? (
+    <AdminDashboard />
+  ) : (
+    <UserDashboard userRole={userRole} />
+  );
 }
 
 export default App;
