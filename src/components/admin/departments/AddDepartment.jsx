@@ -23,6 +23,6 @@ const AddDepartment = () => {
       </motion.div>
     </div>
   );
-};
+}; 
 
 export default AddDepartment;
