@@ -5,14 +5,6 @@ import { db, auth } from '../../../firebase/config';
 import { Lock, Unlock, Key, UserPlus, Trash } from 'lucide-react';
 import { PERMISSIONS } from '../../models/userRoles';
 
-// Define the PERMISSIONS object
-const PERMISSIONS = {
-  'View Users': 'view-users',
-  'Edit Users': 'edit-users',
-  'Delete Users': 'delete-users',
-  'Manage Permissions': 'manage-permissions',
-  // Add more permissions as needed
-};
 
 const UserContent = ({ selectedSubItem, users, fetchUsers }) => {
   const [newUser, setNewUser] = useState({ email: '', password: '', role: 'user' });
