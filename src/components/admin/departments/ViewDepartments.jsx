@@ -23,6 +23,6 @@ const ViewDepartments = () => {
       </motion.div>
     </div>
   );
-};
+}; 
 
 export default ViewDepartments;
