@@ -20,7 +20,7 @@ const AccessPolicies = () => {
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
           className="w-16 h-16 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"
         />
-      </div>
+      </motion.div>
     </div>
   );
 };
