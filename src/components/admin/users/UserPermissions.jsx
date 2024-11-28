@@ -1,72 +1,45 @@
 import React, { useState } from 'react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { motion } from 'framer-motion';
+import { Shield, Search } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
-import { PERMISSIONS } from '../../../models/userRoles';
 
-const UserPermissions = ({ users, fetchUsers }) => {
-  const [error, setError] = useState('');
-
-  const updateUserPermissions = async (userId, permissions) => {
-    try {
-      const userRoleRef = doc(db, 'user_roles', userId);
-      const userRoleDoc = await getDoc(userRoleRef);
-
-      if (userRoleDoc.exists()) {
-        await updateDoc(userRoleRef, {
-          permissions,
-          updatedAt: new Date()
-        });
-        await fetchUsers();
-      } else {
-        setError('User role not found');
-      }
-    } catch (error) {
-      setError(error.message);
-    }
-  };
-
-  return (
-    <div className="overflow-x-auto">
-      {error && <div className="text-red-500">{error}</div>}
-      <table className="w-full">
-        <thead>
-          <tr className="text-left">
-            <th className="pb-4">User</th>
-            <th className="pb-4">Role</th>
-            <th className="pb-4">Permissions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map(user => (
-            <tr key={user.id} className="border-t">
-              <td className="py-4">{user.email}</td>
-              <td>{user.role}</td>
-              <td>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(PERMISSIONS).map(([key, value]) => (
-                    <label key={key} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={user.permissions?.includes(value)}
-                        onChange={(e) => {
-                          const newPermissions = e.target.checked
-                            ? [...(user.permissions || []), value]
-                            : (user.permissions || []).filter(p => p !== value);
-                          updateUserPermissions(user.id, newPermissions);
-                        }}
-                        className="mr-2"
-                      />
-                      {key}
-                    </label>
-                  ))}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+const PERMISSION_CATEGORIES = {
+  STAKEHOLDER: {
+    name: 'Stakeholder Management',
+    permissions: ['New Request', 'Update', 'Pending']
+  },
+  BACKGROUND_CHECK: {
+    name: 'Background Check',
+    permissions: ['New Request', 'Update', 'Pending']
+  },
+  BADGE_REQUEST: {
+    name: 'Badge Request',
+    permissions: ['New Request', 'Pending']
+  },
+  ACCESS_REQUEST: {
+    name: 'Access Request',
+    permissions: ['New Request', 'Update', 'Pending']
+  },
+  ATTENDANCE: {
+    name: 'Attendance',
+    permissions: ['New Request', 'Update', 'Pending']
+  },
+  VISITORS: {
+    name: 'Visitors Management',
+    permissions: ['New Request', 'Update', 'Pending']
+  }
 };
 
-export default UserPermissions;
+const UserPermissions = ({ users, fetchUsers }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  const filteredUsers = users.filter(user =>
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handlePermissionChange = async (userId, category, permission, isChecked) => {
+    try {
+      const userRoleRef = doc(db, 'user_roles', userId);
+      const permissionKey = `${
