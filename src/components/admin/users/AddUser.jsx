@@ -1,89 +1,182 @@
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword, updatePassword } from 'firebase/auth';
+import { motion } from 'framer-motion';
+import { UserPlus, AlertCircle } from 'lucide-react';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { db, auth } from '../../../firebase/config';
-import { UserPlus } from 'lucide-react';
-import { useCurrentUser } from '../../../hooks/useCurrentUser';
+import { auth, db } from '../../../firebase/config';
 
 const AddUser = ({ fetchUsers }) => {
-  const [newUser, setNewUser] = useState({ email: '', password: '', role: 'user' });
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    role: 'user',
+    department: ''
+  });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const { currentUser, currentUserRole } = useCurrentUser();
 
-  const addUser = async (e) => {
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
 
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
     try {
-      // Check if the current user has permission to add new users
-      if (currentUserRole !== 'admin') {
-        setError('You do not have permission to add new users.');
-        return;
-      }
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
 
-      const userCredential = await createUserWithEmailAndPassword(auth, newUser.email, newUser.password);
       await setDoc(doc(db, 'user_roles', userCredential.user.uid), {
-        role: newUser.role,
+        role: formData.role,
+        department: formData.department,
         permissions: [],
         isLocked: false,
         createdAt: new Date(),
         updatedAt: new Date()
       });
-      setSuccess('User added successfully');
-      setNewUser({ email: '', password: '', role: 'user' });
+
+      setSuccess('User created successfully');
+      setFormData({
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: 'user',
+        department: ''
+      });
       fetchUsers();
-    } catch (error) {
-      setError(error.message);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={addUser} className="space-y-6 max-w-md">
-      {error && <div className="text-red-500">{error}</div>}
-      {success && <div className="text-green-500">{success}</div>}
-      
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">Email</label>
-        <input
-          type="email"
-          value={newUser.email}
-          onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-          className="w-full p-2 border rounded"
-          required
-        />
-      </div>
+    <div className="max-w-2xl mx-auto">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-50 text-red-700 p-4 rounded-lg flex items-center space-x-2"
+          >
+            <AlertCircle className="h-5 w-5" />
+            <span>{error}</span>
+          </motion.div>
+        )}
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">Password</label>
-        <input
-          type="password"
-          value={newUser.password}
-          onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-          className="w-full p-2 border rounded"
-          required
-        />
-      </div>
+        {success && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-green-50 text-green-700 p-4 rounded-lg flex items-center space-x-2"
+          >
+            <AlertCircle className="h-5 w-5" />
+            <span>{success}</span>
+          </motion.div>
+        )}
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">Role</label>
-        <select
-          value={newUser.role}
-          onChange={(e) => setNewUser({...newUser, role: e.target.value})}
-          className="w-full p-2 border rounded"
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Email Address
+          </label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Password
+          </label>
+          <input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Confirm Password
+          </label>
+          <input
+            type="password"
+            name="confirmPassword"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Role
+          </label>
+          <select
+            name="role"
+            value={formData.role}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            required
+          >
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Department
+          </label>
+          <input
+            type="text"
+            name="department"
+            value={formData.department}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="Enter department name"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className={`w-full flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors ${
+            loading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
         >
-          <option value="user">User</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
-
-      <button 
-        type="submit"
-        className="flex items-center space-x-2 px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600"
-      >
-        <UserPlus className="h-4 w-4" />
-        <span>Add User</span>
-      </button>
-    </form>
+          <UserPlus className="h-5 w-5" />
+          <span>{loading ? 'Creating User...' : 'Create User'}</span>
+        </button>
+      </form>
+    </div>
   );
 };
 
