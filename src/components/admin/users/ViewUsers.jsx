@@ -1,12 +1,25 @@
 import React, { useState } from 'react';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { deleteUser } from 'firebase/auth';
-import { db, auth } from '../../../firebase/config';
-import { Lock, Unlock, Key, Trash } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Lock, Unlock, Key, Trash2, Search, Filter } from 'lucide-react';
+import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../../../firebase/config';
 
 const ViewUsers = ({ users, fetchUsers }) => {
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedRole, setSelectedRole] = useState('all');
+
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        await deleteDoc(doc(db, 'users', userId));
+        await deleteDoc(doc(db, 'user_roles', userId));
+        fetchUsers();
+      } catch (error) {
+        console.error('Error deleting user:', error);
+      }
+    }
+  };
 
   const toggleUserLock = async (userId, isLocked) => {
     try {
@@ -16,84 +29,126 @@ const ViewUsers = ({ users, fetchUsers }) => {
       });
       fetchUsers();
     } catch (error) {
-      setError(error.message);
+      console.error('Error toggling user lock:', error);
     }
   };
 
-  const resetPassword = async (userId, newPassword) => {
-    try {
-      await updatePassword(auth.currentUser, newPassword);
-      setSuccess('Password updated successfully');
-    } catch (error) {
-      setError(error.message);
-    }
-  };
-
-  const deleteUser = async (userId, userEmail) => {
-    try {
-      await deleteDoc(doc(db, 'user_roles', userId));
-      await deleteUser(auth.currentUser);
-      setSuccess('User deleted successfully');
-      fetchUsers();
-    } catch (error) {
-      setError(error.message);
-    }
-  };
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
+    return matchesSearch && matchesRole;
+  });
 
   return (
-    <div className="overflow-x-auto">
-      {error && <div className="text-red-500">{error}</div>}
-      {success && <div className="text-green-500">{success}</div>}
-      <table className="w-full">
-        <thead>
-          <tr>
-            <th className="text-left pb-4">Email</th>
-            <th className="text-left pb-4">Role</th>
-            <th className="text-left pb-4">Status</th>
-            <th className="text-left pb-4">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map(user => (
-            <tr key={user.id} className="border-t">
-              <td className="py-4">{user.email}</td>
-              <td>{user.role}</td>
-              <td>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  user.isLocked ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                }`}>
-                  {user.isLocked ? 'Locked' : 'Active'}
-                </span>
-              </td>
-              <td>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => toggleUserLock(user.id, user.isLocked)}
-                    className="p-2 rounded-lg hover:bg-gray-100"
-                  >
-                    {user.isLocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                  </button>
-                  <button
-                    onClick={() => {
-                      const newPassword = prompt('Enter new password:');
-                      if (newPassword) resetPassword(user.id, newPassword);
-                    }}
-                    className="p-2 rounded-lg hover:bg-gray-100"
-                  >
-                    <Key className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => deleteUser(user.id, user.email)}
-                    className="p-2 rounded-lg hover:bg-gray-100 text-red-500"
-                  >
-                    <Trash className="h-4 w-4" />
-                  </button>
-                </div>
-              </td>
+    <div className="space-y-4">
+      {/* Search and Filter Bar */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search users..."
+            className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg"
+        >
+          <Filter className="h-5 w-5" />
+          <span>Filter</span>
+        </button>
+      </div>
+
+      {/* Filters */}
+      {showFilters && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          className="bg-white p-4 rounded-lg shadow-sm mb-4"
+        >
+          <select
+            value={selectedRole}
+            onChange={(e) => setSelectedRole(e.target.value)}
+            className="w-48 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            <option value="all">All Roles</option>
+            <option value="admin">Admin</option>
+            <option value="user">User</option>
+          </select>
+        </motion.div>
+      )}
+
+      {/* Users Table */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {filteredUsers.map(user => (
+              <tr key={user.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {user.role}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    user.isLocked ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                  }`}>
+                    {user.isLocked ? 'Locked' : 'Active'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => toggleUserLock(user.id, user.isLocked)}
+                      className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                      title={user.isLocked ? 'Unlock User' : 'Lock User'}
+                    >
+                      {user.isLocked ? 
+                        <Unlock className="h-4 w-4 text-green-600" /> : 
+                        <Lock className="h-4 w-4 text-orange-600" />
+                      }
+                    </button>
+                    <button
+                      onClick={() => {
+                        const newPassword = prompt('Enter new password:');
+                        if (newPassword) {
+                          // Handle password reset
+                        }
+                      }}
+                      className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                      title="Reset Password"
+                    >
+                      <Key className="h-4 w-4 text-blue-600" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(user.id)}
+                      className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                      title="Delete User"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
