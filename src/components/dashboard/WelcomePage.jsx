@@ -15,7 +15,6 @@ import {
   Users,
   UserPlus
 } from 'lucide-react';
-import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase/config';
 
 const cardVariants = {
@@ -37,82 +36,85 @@ const cardVariants = {
   }
 };
 
-const menuItems = [
-  {
-    icon: FileText,
-    text: 'Stake Holder Request',
-    subItems: ['New Request', 'Update', 'Pending'],
-    path: 'stakeholder',
-    color: 'emerald'
-  },
-  {
-    icon: UserCheck,
-    text: 'Background Check Request',
-    subItems: ['New Request', 'Update', 'Pending'],
-    path: 'background',
-    color: 'emerald'
-  },
-  {
-    icon: BadgeCheck,
-    text: 'Badge Request',
-    subItems: ['New Request', 'Pending'],
-    path: 'badge',
-    color: 'emerald'
-  },
-  {
-    icon: Key,
-    text: 'Access Request',
-    subItems: ['New Request', 'Update', 'Pending'],
-    path: 'access',
-    color: 'emerald'
-  },
-  {
-    icon: Users,
-    text: 'Attendance',
-    subItems: ['New Request', 'Update', 'Pending'],
-    path: 'attendance',
-    color: 'emerald'
-  },
-  {
-    icon: UserPlus,
-    text: 'Visitors Management',
-    subItems: ['New Request', 'Update', 'Pending'],
-    path: 'visitors',
-    color: 'emerald'
-  },
-  {
-    icon: BarChart,
-    text: 'Reports',
-    subItems: ['SHR Report', 'BCR Report', 'BR Report', 'Access Report', 'Attendance Report', 'Visitors Report'],
-    path: 'reports',
-    color: 'emerald'
-  }
-];
-
-const WelcomePage = ({ username, onLogout, onNavigate }) => {
+const WelcomePage = ({ username, onLogout, userRole }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [expandedCard, setExpandedCard] = useState(null);
   const [notifications, setNotifications] = useState(0);
 
-  // Update time
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  const menuItems = [
+    {
+      icon: FileText,
+      text: 'Stake Holder Request',
+      subItems: ['New Request', 'Update', 'Pending'],
+      path: 'stakeholder',
+      permission: 'stakeholder'
+    },
+    {
+      icon: UserCheck,
+      text: 'Background Check Request',
+      subItems: ['New Request', 'Update', 'Pending'],
+      path: 'background',
+      permission: 'background_check'
+    },
+    {
+      icon: BadgeCheck,
+      text: 'Badge Request',
+      subItems: ['New Request', 'Pending'],
+      path: 'badge',
+      permission: 'badge_request'
+    },
+    {
+      icon: Key,
+      text: 'Access Request',
+      subItems: ['New Request', 'Update', 'Pending'],
+      path: 'access',
+      permission: 'access_request'
+    },
+    {
+      icon: Users,
+      text: 'Attendance',
+      subItems: ['New Request', 'Update', 'Pending'],
+      path: 'attendance',
+      permission: 'attendance'
+    },
+    {
+      icon: UserPlus,
+      text: 'Visitors Management',
+      subItems: ['New Request', 'Update', 'Pending'],
+      path: 'visitors',
+      permission: 'visitors'
+    },
+    {
+      icon: BarChart,
+      text: 'Reports',
+      subItems: ['SHR Report', 'BCR Report', 'BR Report', 'Access Report', 'Attendance Report', 'Visitors Report'],
+      path: 'reports',
+      permission: 'reports'
+    }
+  ];
+
   const handleCardClick = (index) => {
     setExpandedCard(expandedCard === index ? null : index);
   };
 
-  // Logout
-const handleLogout = async () => {
-  try {
-    await signOut(auth);
-    onLogout(); // Your existing onLogout handler
-  } catch (error) {
-    console.error('Logout error:', error);
-  }
-};
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      onLogout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  // Filter menu items based on user permissions
+  const authorizedMenuItems = menuItems.filter(item => 
+    userRole?.permissions?.includes(item.permission)
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
@@ -174,11 +176,11 @@ const handleLogout = async () => {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-medium text-gray-700">{username}</span>
-                  <span className="text-xs text-gray-500">Administrator</span>
+                  <span className="text-xs text-gray-500">User</span>
                 </div>
               </div>
               <button
-                onClick={onLogout}
+                onClick={handleLogout}
                 className="flex items-center space-x-1 px-3 py-2 rounded-lg text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-200"
               >
                 <LogOut className="h-4 w-4" />
@@ -191,41 +193,39 @@ const handleLogout = async () => {
 
       {/* Main Content */}
       <div className="pt-24 px-6 pb-8">
-{/* Welcome Banner */}
-<motion.div
-  initial={{ opacity: 0, y: -20 }}
-  animate={{ opacity: 1, y: 0 }}
-  className=" text-black p-8 mb-8"
->
-  <div className="max-w-4xl mx-auto">
-    <h1 className="text-3xl font-bold mb-2">Welcome back, {username}!</h1>
-    <p className="text-black text-lg">
-      Select an option below to get started with your tasks
-    </p>
-  </div>
-</motion.div>
+        {/* Welcome Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-black p-8 mb-8"
+        >
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-3xl font-bold mb-2">Welcome back, {username}!</h1>
+            <p className="text-black text-lg">
+              Select an option below to get started with your tasks
+            </p>
+          </div>
+        </motion.div>
 
         {/* Menu Grid */}
         <div className="max-w-7xl mx-auto">
           <motion.div 
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             initial="hidden"
             animate="visible"
           >
-            {menuItems.map((item, index) => (
+            {authorizedMenuItems.map((item, index) => (
               <motion.div
                 key={index}
                 custom={index}
                 variants={cardVariants}
                 whileHover="hover"
                 onClick={() => handleCardClick(index)}
-                className="bg-white rounded-xl shadow-sm overflow-hidden
-                          cursor-pointer group transition-all duration-300"
+                className="bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer group"
               >
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-emerald-50 rounded-lg 
-                                  group-hover:bg-emerald-100 transition-colors">
+                    <div className="p-3 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors">
                       <item.icon className="h-6 w-6 text-emerald-600" />
                     </div>
                     <motion.div
@@ -256,7 +256,7 @@ const handleLogout = async () => {
                             key={subIndex}
                             onClick={(e) => {
                               e.stopPropagation();
-                              onNavigate(item.path, subItem);
+                              // Handle navigation
                             }}
                             whileHover={{ x: 4 }}
                             className="w-full text-left text-sm px-4 py-2 rounded-lg
