@@ -1,15 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Search, Shield, Save } from 'lucide-react';
 import { db } from '../../../firebase/config';
-import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
-import { PERMISSIONS } from '../../../models/userRoles';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 
 const RolePermissions = () => {
   const [roles, setRoles] = useState([]);
   const [selectedRole, setSelectedRole] = useState(null);
-  const [rolePermissions, setRolePermissions] = useState([]);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+
+  const permissionGroups = {
+    stakeholder: {
+      name: 'Stakeholder Management',
+      permissions: ['view', 'create', 'update', 'delete']
+    },
+    background_check: {
+      name: 'Background Check',
+      permissions: ['view', 'create', 'update', 'delete']
+    },
+    badge_request: {
+      name: 'Badge Request',
+      permissions: ['view', 'create', 'update']
+    },
+    access_request: {
+      name: 'Access Request',
+      permissions: ['view', 'create', 'update', 'delete']
+    },
+    attendance: {
+      name: 'Attendance',
+      permissions: ['view', 'create', 'update', 'delete']
+    },
+    visitors: {
+      name: 'Visitors Management',
+      permissions: ['view', 'create', 'update', 'delete']
+    },
+    reports: {
+      name: 'Reports',
+      permissions: ['view', 'export']
+    }
+  };
 
   useEffect(() => {
     fetchRoles();
@@ -18,115 +49,128 @@ const RolePermissions = () => {
   const fetchRoles = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, 'roles'));
-      const rolesData = querySnapshot.docs.map((doc) => ({
+      const rolesData = querySnapshot.docs.map(doc => ({
         id: doc.id,
-        name: doc.data().name,
-        permissions: doc.data().permissions || [],
+        ...doc.data()
       }));
       setRoles(rolesData);
     } catch (error) {
-      setError('Error fetching roles');
+      console.error('Error fetching roles:', error);
     }
   };
 
-  const selectRole = (role) => {
-    setSelectedRole(role);
-    setRolePermissions(role.permissions);
-  };
+  const handlePermissionChange = async (groupKey, permission) => {
+    if (!selectedRole) return;
 
-  const updateRolePermissions = async () => {
+    const newPermissions = selectedRole.permissions || [];
+    const permissionKey = `${groupKey}_${permission}`;
+
+    if (newPermissions.includes(permissionKey)) {
+      newPermissions.splice(newPermissions.indexOf(permissionKey), 1);
+    } else {
+      newPermissions.push(permissionKey);
+    }
+
     try {
       await updateDoc(doc(db, 'roles', selectedRole.id), {
-        permissions: rolePermissions,
+        permissions: newPermissions,
+        updatedAt: new Date()
       });
-      setSuccess('Role permissions updated successfully');
+
+      setMessage({ type: 'success', text: 'Permissions updated successfully' });
       fetchRoles();
     } catch (error) {
-      setError('Error updating role permissions');
-    }
-  };
-
-  const togglePermission = (permission) => {
-    if (rolePermissions.includes(permission)) {
-      setRolePermissions(rolePermissions.filter((p) => p !== permission));
-    } else {
-      setRolePermissions([...rolePermissions, permission]);
+      setMessage({ type: 'error', text: 'Error updating permissions' });
     }
   };
 
   return (
-    <div className="flex justify-center items-center h-full">
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="bg-white rounded-xl shadow-sm p-8 w-full max-w-4xl"
-      >
-        <h2 className="text-2xl font-bold mb-4">Role Permissions</h2>
-        {error && <div className="text-red-500 mb-4">{error}</div>}
-        {success && <div className="text-green-500 mb-4">{success}</div>}
-        <div className="space-y-4">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <th className="text-left pb-4">Role</th>
-                  <th className="text-left pb-4">Permissions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {roles.map((role) => (
-                  <tr
-                    key={role.id}
-                    className={`border-t cursor-pointer ${
-                      selectedRole?.id === role.id ? 'bg-emerald-100' : ''
-                    }`}
-                    onClick={() => selectRole(role)}
-                  >
-                    <td className="py-4">{role.name}</td>
-                    <td>
-                      <div className="flex flex-wrap gap-2">
-                        {role.permissions.map((permission) => (
-                          <span
-                            key={permission}
-                            className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700"
-                          >
-                            {permission}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {selectedRole && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Permissions for {selectedRole.name}</h3>
-              <div className="flex flex-wrap gap-2">
-                {Object.keys(PERMISSIONS).map((permission) => (
-                  <label key={permission} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={rolePermissions.includes(PERMISSIONS[permission])}
-                      onChange={() => togglePermission(PERMISSIONS[permission])}
-                      className="mr-2"
-                    />
-                    {permission}
-                  </label>
-                ))}
+    <div className="space-y-6">
+      {/* Search Role */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search roles..."
+          className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+      </div>
+
+      {/* Role List */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {roles
+          .filter(role => role.name.toLowerCase().includes(searchTerm.toLowerCase()))
+          .map(role => (
+            <div
+              key={role.id}
+              onClick={() => setSelectedRole(role)}
+              className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                selectedRole?.id === role.id
+                  ? 'border-emerald-500 bg-emerald-50'
+                  : 'hover:border-emerald-200'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Shield className="h-5 w-5 text-emerald-500" />
+                <span className="font-medium">{role.name}</span>
               </div>
-              <button
-                onClick={updateRolePermissions}
-                className="w-full bg-emerald-500 text-white py-2 px-4 rounded hover:bg-emerald-600"
-              >
-                Save Permissions
-              </button>
+              <p className="text-sm text-gray-500 mt-1">{role.description}</p>
             </div>
-          )}
+          ))}
+      </div>
+
+      {/* Permissions Grid */}
+      {selectedRole && (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h3 className="text-lg font-medium mb-4">
+            Permissions for {selectedRole.name}
+          </h3>
+          <div className="space-y-6">
+            {Object.entries(permissionGroups).map(([groupKey, group]) => (
+              <div key={groupKey} className="space-y-2">
+                <h4 className="font-medium text-gray-700">{group.name}</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {group.permissions.map(permission => {
+                    const permissionKey = `${groupKey}_${permission}`;
+                    const isEnabled = selectedRole.permissions?.includes(permissionKey);
+
+                    return (
+                      <label
+                        key={permissionKey}
+                        className="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isEnabled}
+                          onChange={() => handlePermissionChange(groupKey, permission)}
+                          className="text-emerald-500 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm capitalize">{permission}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </motion.div>
+      )}
+
+      {/* Message Toast */}
+      {message.text && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 50 }}
+          className={`fixed bottom-4 right-4 p-4 rounded-lg shadow-lg ${
+            message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+          }`}
+        >
+          {message.text}
+        </motion.div>
+      )}
     </div>
   );
 };
