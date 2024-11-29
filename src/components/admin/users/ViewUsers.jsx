@@ -12,7 +12,7 @@ import {
   Mail,
   Phone
 } from 'lucide-react';
-import { collection, query, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 
 const ViewUsers = ({ onNavigate }) => {
@@ -34,33 +34,32 @@ const ViewUsers = ({ onNavigate }) => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const usersRef = collection(db, 'users');
-      const querySnapshot = await getDocs(usersRef);
+      const users = [];
       
-      const usersPromises = querySnapshot.docs.map(async (userDoc) => {
-        const userData = { id: userDoc.id, ...userDoc.data() };
-        
-        try {
-          const roleDocRef = doc(db, 'user_roles', userDoc.id);
-          const roleDocSnap = await getDoc(roleDocRef);
-          
-          return {
-            ...userData,
-            role: roleDocSnap.exists() ? roleDocSnap.data().role : 'user',
-            status: userData.status || 'active'
-          };
-        } catch (error) {
-          console.error(`Error fetching role for user ${userDoc.id}:`, error);
-          return {
-            ...userData,
-            role: 'user',
-            status: userData.status || 'active'
-          };
-        }
+      // Get users collection
+      const usersSnapshot = await getDocs(collection(db, 'users'));
+      
+      // Get user roles collection
+      const rolesSnapshot = await getDocs(collection(db, 'user_roles'));
+      const rolesMap = {};
+      
+      // Create a map of roles by user ID
+      rolesSnapshot.forEach(doc => {
+        rolesMap[doc.id] = doc.data();
       });
 
-      const usersData = await Promise.all(usersPromises);
-      setUsers(usersData);
+      // Combine user data with their roles
+      usersSnapshot.forEach(doc => {
+        users.push({
+          id: doc.id,
+          ...doc.data(),
+          role: rolesMap[doc.id]?.role || 'user',
+          permissions: rolesMap[doc.id]?.permissions || [],
+          status: doc.data().status || 'active'
+        });
+      });
+
+      setUsers(users);
       setMessage({ type: '', text: '' });
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -223,24 +222,14 @@ const ViewUsers = ({ onNavigate }) => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                User
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Contact
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Role
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
                 <td colSpan="5" className="px-6 py-4 text-center">
