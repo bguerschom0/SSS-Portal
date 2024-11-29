@@ -1,3 +1,4 @@
+// src/components/admin/users/ViewUsers.jsx
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -13,11 +14,11 @@ import {
   X,
   Calendar
 } from 'lucide-react';
-import { collection, getDocs, deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, auth } from '../../../firebase/config';
 
-const ViewUsers = () => {
+const ViewUsers = ({ onNavigate }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -118,12 +119,16 @@ const ViewUsers = () => {
         lastName: newUser.lastName,
         email: newUser.email,
         department: newUser.department,
-        status: 'active'
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date()
       });
 
       await setDoc(doc(db, 'user_roles', userCredential.user.uid), {
         role: newUser.role,
-        permissions: []
+        permissions: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
       });
 
       setMessage({
@@ -131,7 +136,7 @@ const ViewUsers = () => {
         text: 'User created successfully'
       });
 
-      // Reset the new user form
+      setShowAddModal(false);
       setNewUser({
         firstName: '',
         lastName: '',
@@ -141,8 +146,7 @@ const ViewUsers = () => {
         role: 'user',
         status: 'active'
       });
-
-      // Refetch the users to update the table
+      
       await fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
@@ -153,13 +157,6 @@ const ViewUsers = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    if (timestamp.toDate) return timestamp.toDate().toLocaleDateString();
-    if (timestamp instanceof Date) return timestamp.toLocaleDateString();
-    return new Date(timestamp).toLocaleDateString();
   };
 
   const filteredUsers = users.filter(user => {
@@ -325,7 +322,7 @@ const ViewUsers = () => {
                   <td className="px-6 py-4 text-sm text-gray-500">{user.department}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{user.email}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {formatDate(user.createdAt)}
+                    {user.createdAt?.toDate().toLocaleDateString() || 'N/A'}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -374,7 +371,7 @@ const ViewUsers = () => {
               className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"
             >
               <div className="p-6">
-<div className="flex justify-between items-center mb-4">
+                <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Add New User</h3>
                   <button
                     onClick={() => setShowAddModal(false)}
