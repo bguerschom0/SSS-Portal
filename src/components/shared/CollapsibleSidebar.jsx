@@ -81,6 +81,11 @@ const CollapsibleSidebar = ({ activePage, onNavigate }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
   const menuItems = [
+     {
+    icon: Home,
+    text: 'Dashboard',
+    path: 'welcome'
+  },
     {
       icon: Users,
       text: 'User Management',
