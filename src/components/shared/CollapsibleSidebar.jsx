@@ -1,24 +1,13 @@
-// src/components/shared/CollapsibleSidebar.jsx
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Home,
-  FileText, 
-  UserCheck, 
-  BadgeCheck, 
-  BarChart,
-  ChevronDown,
-  Key,
-  Users,
-  UserPlus,
-  Shield,
-  Building2,
-  Lock
+  Home, FileText, UserCheck, BadgeCheck, 
+  BarChart, ChevronDown, Key, Users
 } from 'lucide-react';
 
 const MenuItem = ({ icon: Icon, text, subItems, isActive, onItemClick, isExpanded }) => {
   const [isOpen, setIsOpen] = useState(false);
-
+  
   return (
     <div className="mb-1 group">
       <button
@@ -49,8 +38,7 @@ const MenuItem = ({ icon: Icon, text, subItems, isActive, onItemClick, isExpande
           </div>
         )}
         {subItems && isExpanded && (
-          <ChevronDown className={`h-4 w-4 transition-transform duration-200 
-            ${isOpen ? 'transform rotate-180' : ''}`} />
+          <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'transform rotate-180' : ''}`} />
         )}
       </button>
       {isExpanded && isOpen && subItems && (
@@ -64,9 +52,7 @@ const MenuItem = ({ icon: Icon, text, subItems, isActive, onItemClick, isExpande
             <button
               key={index}
               onClick={() => onItemClick(text, item)}
-              className="w-full text-left px-3 py-2 text-sm text-gray-600 
-                       hover:text-emerald-600 hover:bg-emerald-50 rounded-md
-                       transition-colors"
+              className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
             >
               {item}
             </button>
@@ -77,96 +63,64 @@ const MenuItem = ({ icon: Icon, text, subItems, isActive, onItemClick, isExpande
   );
 };
 
-const CollapsibleSidebar = ({ activePage, onNavigate }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const menuItems = [
-     {
+const menuItems = [
+  {
     icon: Home,
     text: 'Dashboard',
     path: 'welcome'
   },
-    {
-      icon: Users,
-      text: 'User Management',
-      subItems: ['View Users', 'Add User', 'User Permissions'],
-      path: 'users'
-    },
-    {
-      icon: Shield,
-      text: 'Role Management',
-      subItems: ['View Roles', 'Create Role', 'Role Permissions'],
-      path: 'roles'
-    },
-    {
-      icon: Building2,
-      text: 'Department Management',
-      subItems: ['View Departments', 'Add Department'],
-      path: 'departments'
-    },
-    {
-      icon: Lock,
-      text: 'Access Control',
-      subItems: ['Access Levels', 'Access Groups', 'Access Policies'],
-      path: 'access'
-    },
-    {
-      icon: FileText,
-      text: 'Stake Holder Request',
-      subItems: ['New Request', 'Update', 'Pending'],
-      path: 'stakeholder'
-    },
-    {
-      icon: UserCheck,
-      text: 'Background Check Request',
-      subItems: ['New Request', 'Update', 'Pending'],
-      path: 'background'
-    },
-    {
-      icon: BadgeCheck,
-      text: 'Badge Request',
-      subItems: ['New Request', 'Pending'],
-      path: 'badge'
-    },
-    {
-      icon: Key,
-      text: 'Access Request',
-      subItems: ['New Request', 'Update', 'Pending'],
-      path: 'access_request'
-    },
-    {
-      icon: Users,
-      text: 'Attendance',
-      subItems: ['New Request', 'Update', 'Pending'],
-      path: 'attendance'
-    },
-    {
-      icon: UserPlus,
-      text: 'Visitors Management',
-      subItems: ['New Request', 'Update', 'Pending'],
-      path: 'visitors'
-    },
-    {
-      icon: BarChart,
-      text: 'Reports',
-      subItems: ['SHR Report', 'BCR Report', 'BR Report', 'Access Report', 'Attendance Report', 'Visitors Report'],
-      path: 'reports'
-    }
-  ];
+  {
+    icon: FileText,
+    text: 'Stake Holder Request',
+    path: 'stakeholder',
+    subItems: ['New Request', 'Update', 'Pending']
+  },
+  {
+    icon: UserCheck,
+    text: 'Background Check Request',
+    path: 'background',
+    subItems: ['New Request', 'Update', 'Pending']
+  },
+  {
+    icon: BadgeCheck,
+    text: 'Badge Request',
+    path: 'badge',
+    subItems: ['New Request', 'Pending']
+  },
+  {
+    icon: Key,
+    text: 'Access Request',
+    path: 'access',
+    subItems: ['New Request', 'Update', 'Pending']
+  },
+  {
+    icon: Users,
+    text: 'User Management',
+    path: 'users',
+    subItems: ['View Users', 'Add User', 'User Permissions']
+  },
+  {
+    icon: BarChart,
+    text: 'Reports',
+    path: 'reports',
+    subItems: ['SHR Report', 'BCR Report', 'BR Report', 'Access Report']
+  }
+];
 
+const CollapsibleSidebar = ({ activePage, onNavigate }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div
+    <motion.div
+      initial={false}
+      animate={{ width: isExpanded ? 256 : 64 }}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
-      className={`fixed left-0 top-0 h-full bg-white shadow-lg z-50
-                 transition-all duration-300 ease-in-out
-                 ${isExpanded ? 'w-64' : 'w-16'}`}
+      className="fixed left-0 top-0 h-full bg-white shadow-lg z-50"
     >
-      {/* Logo Section */}
       <div className="h-16 border-b flex items-center px-4">
         <img 
-          src="/logo.png"
+          src="/api/placeholder/32/32" 
           alt="Logo"
           className="h-8 w-8 object-contain"
         />
@@ -182,7 +136,6 @@ const CollapsibleSidebar = ({ activePage, onNavigate }) => {
         )}
       </div>
 
-      {/* Menu Items */}
       <div className="p-3 space-y-2 overflow-y-auto h-[calc(100vh-4rem)]">
         {menuItems.map((item, index) => (
           <MenuItem
@@ -202,7 +155,7 @@ const CollapsibleSidebar = ({ activePage, onNavigate }) => {
           />
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
