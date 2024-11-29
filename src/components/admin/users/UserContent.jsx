@@ -1,30 +1,26 @@
-// src/components/admin/users/UserContent.jsx
 import React from 'react';
 import { motion } from 'framer-motion';
 import ViewUsers from './ViewUsers';
 import AddUser from './AddUser';
 import CollapsibleSidebar from '../../shared/CollapsibleSidebar';
 
-const UserContent = ({ selectedSubItem, onNavigate }) => {
+const UserContent = ({ selectedSubItem }) => {
   const renderContent = () => {
     switch (selectedSubItem) {
       case 'View Users':
-        return <ViewUsers onNavigate={onNavigate} />;
+        return <ViewUsers />;
       case 'Add User':
-        return <AddUser onNavigate={onNavigate} />;
+        return <AddUser />;
       case 'User Permissions':
         return <div>User Permissions Content</div>;
       default:
-        return <ViewUsers onNavigate={onNavigate} />;
+        return <ViewUsers />;
     }
   };
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <CollapsibleSidebar 
-        activePage="users" 
-        onNavigate={onNavigate} 
-      />
+      <CollapsibleSidebar activePage="users" />
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
