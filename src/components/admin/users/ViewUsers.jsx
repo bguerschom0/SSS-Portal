@@ -112,24 +112,28 @@ const ViewUsers = ({ onNavigate }) => {
         newUser.email,
         newUser.password
       );
-
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         firstName: newUser.firstName,
         lastName: newUser.lastName,
         email: newUser.email,
         department: newUser.department,
         status: 'active',
-        createdAt: serverTimestamp(), // Firestore will automatically set this
-        updatedAt: serverTimestamp()  // Firestore will automatically set this
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
-
       await setDoc(doc(db, 'user_roles', userCredential.user.uid), {
         role: newUser.role,
         permissions: [],
         createdAt: new Date(),
-        updatedAt: new Date()
-      });
+              updatedAt: new Date()
+            });
 
+const formatDate = (timestamp) => {
+        if (!timestamp) return 'N/A';
+        if (timestamp.toDate) return timestamp.toDate().toLocaleDateString();
+        if (timestamp instanceof Date) return timestamp.toLocaleDateString();
+        return new Date(timestamp).toLocaleDateString();
+};
       setMessage({
         type: 'success',
         text: 'User created successfully'
@@ -180,6 +184,9 @@ const ViewUsers = ({ onNavigate }) => {
         </p>
       </div>
 
+      <td className="px-6 py-4 text-sm text-gray-500">
+        {formatDate(user.createdAt)}
+      </td>
       <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="md:col-span-2">
           <div className="relative">
