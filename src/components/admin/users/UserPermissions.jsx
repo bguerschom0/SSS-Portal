@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Search, Filter } from 'lucide-react';
+import { Shield, Search, AlertCircle } from 'lucide-react';
 import { db } from '../../../firebase/config';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 
-const UserPermissions = ({ users, fetchUsers }) => {
+const UserPermissions = () => {
   const [selectedUser, setSelectedUser] = useState(null);
+  const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [accessGranted, setAccessGranted] = useState({});
 
   const permissions = {
     stakeholder: ['New Request', 'Update', 'Pending'],
@@ -19,6 +21,29 @@ const UserPermissions = ({ users, fetchUsers }) => {
     visitors: ['New Request', 'Update', 'Pending'],
     reports: ['View Reports', 'Export Reports']
   };
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const usersData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setUsers(usersData);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (selectedUser?.permissions) {
+      const granted = {};
+      selectedUser.permissions.forEach(perm => {
+        const [category] = perm.split('_');
+        granted[category] = true;
+      });
+      setAccessGranted(granted);
+    }
+  }, [selectedUser]);
 
   const handlePermissionChange = async (category, permission) => {
     if (!selectedUser) return;
@@ -34,15 +59,32 @@ const UserPermissions = ({ users, fetchUsers }) => {
         permissions: updatedPermissions,
         updatedAt: new Date()
       });
-      fetchUsers();
-      setMessage({ type: 'success', text: 'Permissions updated successfully' });
+
+      // Update access granted status
+      const hasPermissionInCategory = updatedPermissions.some(p => p.startsWith(category));
+      setAccessGranted(prev => ({
+        ...prev,
+        [category]: hasPermissionInCategory
+      }));
+
+      setMessage({ 
+        type: 'success', 
+        text: `${hasPermissionInCategory ? 'Access granted to' : 'Access revoked from'} ${category.replace('_', ' ')}`
+      });
+
+      // Clear message after 3 seconds
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+
     } catch (error) {
-      setMessage({ type: 'error', text: 'Error updating permissions' });
+      setMessage({ 
+        type: 'error', 
+        text: 'Error updating permissions' 
+      });
     }
   };
 
   const filteredUsers = users.filter(user =>
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -75,6 +117,15 @@ const UserPermissions = ({ users, fetchUsers }) => {
             >
               <div className="font-medium text-gray-900">{user.email}</div>
               <div className="text-sm text-gray-500">{user.role}</div>
+              <div className="mt-1 text-xs">
+                {Object.entries(accessGranted).map(([category, hasAccess]) => 
+                  hasAccess && (
+                    <span key={category} className="inline-block mr-2 px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                      {category}
+                    </span>
+                  )
+                )}
+              </div>
             </button>
           ))}
         </div>
@@ -119,18 +170,6 @@ const UserPermissions = ({ users, fetchUsers }) => {
                   </div>
                 ))}
               </div>
-
-              {message.text && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`mt-4 p-4 rounded-lg ${
-                    message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                  }`}
-                >
-                  {message.text}
-                </motion.div>
-              )}
             </div>
           ) : (
             <div className="text-center py-12 bg-white rounded-lg shadow-sm">
@@ -141,6 +180,21 @@ const UserPermissions = ({ users, fetchUsers }) => {
           )}
         </div>
       </div>
+
+      {/* Notification Message */}
+      {message.text && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className={`fixed bottom-4 right-4 p-4 rounded-lg flex items-center space-x-2 ${
+            message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+          }`}
+        >
+          <AlertCircle className="h-5 w-5" />
+          <span>{message.text}</span>
+        </motion.div>
+      )}
     </div>
   );
 };
