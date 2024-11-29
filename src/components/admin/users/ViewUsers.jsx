@@ -14,10 +14,9 @@ import {
   X,
   Calendar
 } from 'lucide-react';
-import { collection, getDocs, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, auth } from '../../../firebase/config';
-
 const ViewUsers = ({ onNavigate }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -120,8 +119,8 @@ const ViewUsers = ({ onNavigate }) => {
         email: newUser.email,
         department: newUser.department,
         status: 'active',
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: serverTimestamp(), // Firestore will automatically set this
+        updatedAt: serverTimestamp()  // Firestore will automatically set this
       });
 
       await setDoc(doc(db, 'user_roles', userCredential.user.uid), {
