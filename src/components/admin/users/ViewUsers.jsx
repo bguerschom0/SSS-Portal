@@ -1,4 +1,3 @@
-// src/components/admin/users/ViewUsers.jsx
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -17,6 +16,7 @@ import {
 import { collection, getDocs, deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, auth } from '../../../firebase/config';
+
 const ViewUsers = ({ onNavigate }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -112,28 +112,20 @@ const ViewUsers = ({ onNavigate }) => {
         newUser.email,
         newUser.password
       );
+
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         firstName: newUser.firstName,
         lastName: newUser.lastName,
         email: newUser.email,
         department: newUser.department,
-        status: 'active',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        status: 'active'
       });
+
       await setDoc(doc(db, 'user_roles', userCredential.user.uid), {
         role: newUser.role,
-        permissions: [],
-        createdAt: new Date(),
-              updatedAt: new Date()
-            });
+        permissions: []
+      });
 
-const formatDate = (timestamp) => {
-        if (!timestamp) return 'N/A';
-        if (timestamp.toDate) return timestamp.toDate().toLocaleDateString();
-        if (timestamp instanceof Date) return timestamp.toLocaleDateString();
-        return new Date(timestamp).toLocaleDateString();
-};
       setMessage({
         type: 'success',
         text: 'User created successfully'
@@ -162,6 +154,13 @@ const formatDate = (timestamp) => {
     }
   };
 
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    if (timestamp.toDate) return timestamp.toDate().toLocaleDateString();
+    if (timestamp instanceof Date) return timestamp.toLocaleDateString();
+    return new Date(timestamp).toLocaleDateString();
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       (user.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -184,9 +183,6 @@ const formatDate = (timestamp) => {
         </p>
       </div>
 
-      <td className="px-6 py-4 text-sm text-gray-500">
-        {formatDate(user.createdAt)}
-      </td>
       <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="md:col-span-2">
           <div className="relative">
@@ -328,7 +324,7 @@ const formatDate = (timestamp) => {
                   <td className="px-6 py-4 text-sm text-gray-500">{user.department}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{user.email}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {user.createdAt?.toDate().toLocaleDateString() || 'N/A'}
+                    {formatDate(user.createdAt)}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
