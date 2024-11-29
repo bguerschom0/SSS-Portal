@@ -18,7 +18,7 @@ import {
 
 const MenuItem = ({ icon: Icon, text, subItems, isActive, onItemClick, isExpanded }) => {
   const [isOpen, setIsOpen] = useState(false);
-  
+
   return (
     <div className="mb-1 group">
       <button
@@ -79,8 +79,13 @@ const MenuItem = ({ icon: Icon, text, subItems, isActive, onItemClick, isExpande
 
 const CollapsibleSidebar = ({ activePage, onNavigate }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   const menuItems = [
+     {
+    icon: Home,
+    text: 'Dashboard',
+    path: 'welcome'
+  },
     {
       icon: Users,
       text: 'User Management',
@@ -148,7 +153,7 @@ const CollapsibleSidebar = ({ activePage, onNavigate }) => {
       path: 'reports'
     }
   ];
-  
+
 
   return (
     <div
