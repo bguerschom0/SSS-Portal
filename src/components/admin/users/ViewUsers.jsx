@@ -10,10 +10,13 @@ import {
   Loader,
   AlertCircle,
   Mail,
-  Phone
+  Phone,
+  X,
+  Calendar
 } from 'lucide-react';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../../../firebase/config';
+import { collection, getDocs, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { db, auth } from '../../../firebase/config';
 
 const ViewUsers = ({ onNavigate }) => {
   const [users, setUsers] = useState([]);
@@ -26,6 +29,16 @@ const ViewUsers = ({ onNavigate }) => {
     status: 'all'
   });
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newUser, setNewUser] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    department: '',
+    role: 'user',
+    status: 'active'
+  });
 
   useEffect(() => {
     fetchUsers();
@@ -35,20 +48,14 @@ const ViewUsers = ({ onNavigate }) => {
     setLoading(true);
     try {
       const users = [];
-      
-      // Get users collection
       const usersSnapshot = await getDocs(collection(db, 'users'));
-      
-      // Get user roles collection
       const rolesSnapshot = await getDocs(collection(db, 'user_roles'));
       const rolesMap = {};
       
-      // Create a map of roles by user ID
       rolesSnapshot.forEach(doc => {
         rolesMap[doc.id] = doc.data();
       });
 
-      // Combine user data with their roles
       usersSnapshot.forEach(doc => {
         users.push({
           id: doc.id,
@@ -97,6 +104,61 @@ const ViewUsers = ({ onNavigate }) => {
     }
   };
 
+  const handleAddUser = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        newUser.email,
+        newUser.password
+      );
+
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        email: newUser.email,
+        department: newUser.department,
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      await setDoc(doc(db, 'user_roles', userCredential.user.uid), {
+        role: newUser.role,
+        permissions: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      setMessage({
+        type: 'success',
+        text: 'User created successfully'
+      });
+
+      setShowAddModal(false);
+      setNewUser({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        department: '',
+        role: 'user',
+        status: 'active'
+      });
+      
+      await fetchUsers();
+    } catch (error) {
+      console.error('Error creating user:', error);
+      setMessage({
+        type: 'error',
+        text: error.message
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       (user.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -112,7 +174,6 @@ const ViewUsers = ({ onNavigate }) => {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Users Management</h1>
         <p className="mt-1 text-sm text-gray-500">
@@ -120,7 +181,6 @@ const ViewUsers = ({ onNavigate }) => {
         </p>
       </div>
 
-      {/* Action Bar */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="md:col-span-2">
           <div className="relative">
@@ -144,7 +204,7 @@ const ViewUsers = ({ onNavigate }) => {
         </button>
 
         <button
-          onClick={() => onNavigate('users', 'Add User')}
+          onClick={() => setShowAddModal(true)}
           className="flex items-center justify-center px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
         >
           <UserPlus className="h-5 w-5 mr-2" />
@@ -152,7 +212,6 @@ const ViewUsers = ({ onNavigate }) => {
         </button>
       </div>
 
-      {/* Filters Panel */}
       <AnimatePresence>
         {showFilters && (
           <motion.div
@@ -217,13 +276,14 @@ const ViewUsers = ({ onNavigate }) => {
         )}
       </AnimatePresence>
 
-      {/* Users Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Names</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -232,13 +292,13 @@ const ViewUsers = ({ onNavigate }) => {
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan="5" className="px-6 py-4 text-center">
+                <td colSpan="7" className="px-6 py-4 text-center">
                   <Loader className="h-6 w-6 animate-spin mx-auto text-emerald-500" />
                 </td>
               </tr>
             ) : filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
                   No users found
                 </td>
               </tr>
@@ -256,25 +316,13 @@ const ViewUsers = ({ onNavigate }) => {
                         <div className="text-sm font-medium text-gray-900">
                           {user.firstName} {user.lastName}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {user.department}
-                        </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-500">
-                      <div className="flex items-center">
-                        <Mail className="h-4 w-4 mr-1" />
-                        {user.email}
-                      </div>
-                      {user.phoneNumber && (
-                        <div className="flex items-center mt-1">
-                          <Phone className="h-4 w-4 mr-1" />
-                          {user.phoneNumber}
-                        </div>
-                      )}
-                    </div>
+                  <td className="px-6 py-4 text-sm text-gray-500">{user.department}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{user.email}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {user.createdAt?.toDate().toLocaleDateString() || 'N/A'}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -313,7 +361,126 @@ const ViewUsers = ({ onNavigate }) => {
         </table>
       </div>
 
-      {/* Message Toast */}
+      <AnimatePresence>
+        {showAddModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Add New User</h3>
+                  <button
+                    onClick={() => setShowAddModal(false)}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddUser} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">First Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={newUser.firstName}
+                        onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
+                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-emerald-500 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={newUser.lastName}
+                        onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
+                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-emerald-500 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-emerald-500 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-emerald-500 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Department</label>
+                    <select
+                      required
+                      value={newUser.department}
+                      onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-emerald-500 focus:ring-emerald-500"
+                    >
+                      <option value="">Select Department</option>
+                      <option value="IT">IT</option>
+                      <option value="HR">HR</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Operations">Operations</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Sales">Sales</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Role</label>
+                    <select
+                      required
+                      value={newUser.role}
+                      onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-emerald-500 focus:ring-emerald-500"
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddModal(false)}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 rounded-md"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 rounded-md disabled:opacity-50"
+                    >
+                      {loading ? 'Creating...' : 'Create User'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {message.text && (
           <motion.div
