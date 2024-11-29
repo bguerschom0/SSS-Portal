@@ -70,6 +70,12 @@ const menuItems = [
     path: 'welcome'
   },
   {
+  icon: Users,
+  text: 'User Management',
+  path: 'users',
+  subItems: ['View Users', 'User Permissions']
+},
+  {
     icon: FileText,
     text: 'Stake Holder Request',
     path: 'stakeholder',
