@@ -131,7 +131,10 @@ const ViewUsers = ({ onNavigate }) => {
         text: 'User created successfully'
       });
 
+      // Close the add user modal after successful creation
       setShowAddModal(false);
+
+      // Reset the new user form
       setNewUser({
         firstName: '',
         lastName: '',
@@ -142,6 +145,7 @@ const ViewUsers = ({ onNavigate }) => {
         status: 'active'
       });
       
+      // Refetch the users to update the table
       await fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
