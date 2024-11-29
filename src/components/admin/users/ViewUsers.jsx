@@ -17,7 +17,7 @@ import { collection, getDocs, deleteDoc, doc, setDoc, serverTimestamp } from 'fi
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, auth } from '../../../firebase/config';
 
-const ViewUsers = ({ onNavigate }) => {
+const ViewUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -131,9 +131,6 @@ const ViewUsers = ({ onNavigate }) => {
         text: 'User created successfully'
       });
 
-      // Close the add user modal after successful creation
-      setShowAddModal(false);
-
       // Reset the new user form
       setNewUser({
         firstName: '',
@@ -144,7 +141,7 @@ const ViewUsers = ({ onNavigate }) => {
         role: 'user',
         status: 'active'
       });
-      
+
       // Refetch the users to update the table
       await fetchUsers();
     } catch (error) {
@@ -377,7 +374,7 @@ const ViewUsers = ({ onNavigate }) => {
               className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"
             >
               <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
+<div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Add New User</h3>
                   <button
                     onClick={() => setShowAddModal(false)}
