@@ -317,9 +317,6 @@ const ViewUsers = ({ onNavigate }) => {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">{user.department}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{user.email}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {user.createdAt?.toDate().toLocaleDateString() || 'N/A'}
-                  </td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'
