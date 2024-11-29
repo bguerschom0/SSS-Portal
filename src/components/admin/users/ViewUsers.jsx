@@ -119,16 +119,12 @@ const ViewUsers = ({ onNavigate }) => {
         lastName: newUser.lastName,
         email: newUser.email,
         department: newUser.department,
-        status: 'active',
-        createdAt: new Date(),
-        updatedAt: new Date()
+        status: 'active'
       });
 
       await setDoc(doc(db, 'user_roles', userCredential.user.uid), {
         role: newUser.role,
-        permissions: [],
-        createdAt: new Date(),
-        updatedAt: new Date()
+        permissions: []
       });
 
       setMessage({
