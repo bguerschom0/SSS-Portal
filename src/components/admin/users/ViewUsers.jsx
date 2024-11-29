@@ -35,18 +35,33 @@ const ViewUsers = ({ onNavigate }) => {
     setLoading(true);
     try {
       const usersRef = collection(db, 'users');
-      const userDocs = await getDocs(usersRef);
+      const querySnapshot = await getDocs(usersRef);
       
-      const usersData = await Promise.all(userDocs.docs.map(async (doc) => {
-        const userData = { id: doc.id, ...doc.data() };
-        const roleDoc = await getDoc(doc(db, 'user_roles', doc.id));
-        return {
-          ...userData,
-          role: roleDoc.exists() ? roleDoc.data().role : 'user'
-        };
-      }));
+      const usersPromises = querySnapshot.docs.map(async (userDoc) => {
+        const userData = { id: userDoc.id, ...userDoc.data() };
+        
+        try {
+          const roleDocRef = doc(db, 'user_roles', userDoc.id);
+          const roleDocSnap = await getDoc(roleDocRef);
+          
+          return {
+            ...userData,
+            role: roleDocSnap.exists() ? roleDocSnap.data().role : 'user',
+            status: userData.status || 'active'
+          };
+        } catch (error) {
+          console.error(`Error fetching role for user ${userDoc.id}:`, error);
+          return {
+            ...userData,
+            role: 'user',
+            status: userData.status || 'active'
+          };
+        }
+      });
 
+      const usersData = await Promise.all(usersPromises);
       setUsers(usersData);
+      setMessage({ type: '', text: '' });
     } catch (error) {
       console.error('Error fetching users:', error);
       setMessage({
@@ -71,7 +86,7 @@ const ViewUsers = ({ onNavigate }) => {
         text: 'User deleted successfully'
       });
       
-      fetchUsers();
+      await fetchUsers();
     } catch (error) {
       console.error('Error deleting user:', error);
       setMessage({
@@ -85,9 +100,9 @@ const ViewUsers = ({ onNavigate }) => {
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName?.toLowerCase().includes(searchTerm.toLowerCase());
+      (user.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (user.firstName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (user.lastName?.toLowerCase() || '').includes(searchTerm.toLowerCase());
 
     const matchesDepartment = filters.department === 'all' || user.department === filters.department;
     const matchesRole = filters.role === 'all' || user.role === filters.role;
@@ -161,10 +176,43 @@ const ViewUsers = ({ onNavigate }) => {
                   <option value="IT">IT</option>
                   <option value="HR">HR</option>
                   <option value="Finance">Finance</option>
+                  <option value="Operations">Operations</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="Sales">Sales</option>
+                  <option value="Support">Support</option>
+                  <option value="Management">Management</option>
                 </select>
               </div>
 
-              {/* ... other filter options ... */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Role
+                </label>
+                <select
+                  value={filters.role}
+                  onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="admin">Admin</option>
+                  <option value="user">User</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
             </div>
           </motion.div>
         )}
@@ -193,7 +241,6 @@ const ViewUsers = ({ onNavigate }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            
             {loading ? (
               <tr>
                 <td colSpan="5" className="px-6 py-4 text-center">
