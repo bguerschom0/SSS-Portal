@@ -102,6 +102,7 @@ const ViewUsers = () => {
       setLoading(false);
     }
   };
+
   const handleAddUser = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -126,10 +127,11 @@ const ViewUsers = () => {
       });
 
       setMessage({
-        type: 'success', 
+        type: 'success',
         text: 'User created successfully'
       });
 
+      // Reset the new user form
       setNewUser({
         firstName: '',
         lastName: '',
@@ -140,9 +142,8 @@ const ViewUsers = () => {
         status: 'active'
       });
 
-      setShowAddModal(false);
-      await fetchUsers(); // Refresh the users list
-
+      // Refetch the users to update the table
+      await fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
       setMessage({
@@ -153,6 +154,7 @@ const ViewUsers = () => {
       setLoading(false);
     }
   };
+
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
     if (timestamp.toDate) return timestamp.toDate().toLocaleDateString();
@@ -372,7 +374,7 @@ const ViewUsers = () => {
               className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"
             >
               <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
+<div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Add New User</h3>
                   <button
                     onClick={() => setShowAddModal(false)}
