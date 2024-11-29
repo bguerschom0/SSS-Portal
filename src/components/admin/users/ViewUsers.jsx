@@ -130,7 +130,6 @@ const ViewUsers = () => {
         text: 'User created successfully'
       });
 
-      // Reset form
       setNewUser({
         firstName: '',
         lastName: '',
@@ -141,8 +140,8 @@ const ViewUsers = () => {
         status: 'active'
       });
 
-      // Refresh the entire page
-      window.location.reload();
+      setShowAddModal(false);
+      await fetchUsers(); // Refresh the users list
 
     } catch (error) {
       console.error('Error creating user:', error);
