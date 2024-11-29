@@ -10,7 +10,10 @@ import {
   ChevronDown,
   Key,
   Users,
-  UserPlus
+  UserPlus,
+  Shield,
+  Building2,
+  Lock
 } from 'lucide-react';
 
 const MenuItem = ({ icon: Icon, text, subItems, isActive, onItemClick, isExpanded }) => {
@@ -79,47 +82,73 @@ const CollapsibleSidebar = ({ activePage, onNavigate }) => {
   
   const menuItems = [
     {
-      icon: Home,
-      text: 'Dashboard',
-      path: 'welcome'
+      icon: Users,
+      text: 'User Management',
+      subItems: ['View Users', 'Add User', 'User Permissions'],
+      path: 'users'
+    },
+    {
+      icon: Shield,
+      text: 'Role Management',
+      subItems: ['View Roles', 'Create Role', 'Role Permissions'],
+      path: 'roles'
+    },
+    {
+      icon: Building2,
+      text: 'Department Management',
+      subItems: ['View Departments', 'Add Department'],
+      path: 'departments'
+    },
+    {
+      icon: Lock,
+      text: 'Access Control',
+      subItems: ['Access Levels', 'Access Groups', 'Access Policies'],
+      path: 'access'
     },
     {
       icon: FileText,
       text: 'Stake Holder Request',
-      path: 'stakeholder',
-      subItems: ['New Request', 'Update', 'Pending']
+      subItems: ['New Request', 'Update', 'Pending'],
+      path: 'stakeholder'
     },
     {
       icon: UserCheck,
       text: 'Background Check Request',
-      path: 'background',
-      subItems: ['New Request', 'Update', 'Pending']
+      subItems: ['New Request', 'Update', 'Pending'],
+      path: 'background'
     },
     {
       icon: BadgeCheck,
       text: 'Badge Request',
-      path: 'badge',
-      subItems: ['New Request', 'Pending']
+      subItems: ['New Request', 'Pending'],
+      path: 'badge'
     },
     {
       icon: Key,
       text: 'Access Request',
-      path: 'access',
-      subItems: ['New Request', 'Update', 'Pending']
+      subItems: ['New Request', 'Update', 'Pending'],
+      path: 'access_request'
     },
     {
       icon: Users,
-      text: 'User Management',
-      path: 'users',
-      subItems: ['View Users', 'Add User', 'User Permissions']
+      text: 'Attendance',
+      subItems: ['New Request', 'Update', 'Pending'],
+      path: 'attendance'
+    },
+    {
+      icon: UserPlus,
+      text: 'Visitors Management',
+      subItems: ['New Request', 'Update', 'Pending'],
+      path: 'visitors'
     },
     {
       icon: BarChart,
       text: 'Reports',
-      path: 'reports',
-      subItems: ['SHR Report', 'BCR Report', 'BR Report', 'Access Report']
+      subItems: ['SHR Report', 'BCR Report', 'BR Report', 'Access Report', 'Attendance Report', 'Visitors Report'],
+      path: 'reports'
     }
   ];
+  
 
   return (
     <div
