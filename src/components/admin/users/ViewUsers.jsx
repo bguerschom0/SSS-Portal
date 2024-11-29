@@ -144,6 +144,9 @@ const ViewUsers = () => {
 
       // Refetch the users to update the table
       await fetchUsers();
+
+      // Close the add user modal
+      setShowAddModal(false);
     } catch (error) {
       console.error('Error creating user:', error);
       setMessage({
@@ -374,7 +377,8 @@ const ViewUsers = () => {
               className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"
             >
               <div className="p-6">
-<div className="flex justify-between items-center mb-4">
+                <div className="flex justify-between items-center mb-4">
+
                   <h3 className="text-lg font-semibold text-gray-900">Add New User</h3>
                   <button
                     onClick={() => setShowAddModal(false)}
