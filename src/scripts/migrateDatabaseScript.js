@@ -1,6 +1,6 @@
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
-
+ 
 const migrateDatabase = async () => {
   try {
     console.log('Starting migration...');
