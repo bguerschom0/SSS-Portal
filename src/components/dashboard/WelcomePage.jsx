@@ -52,8 +52,8 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
         (docSnapshot) => {
           if (docSnapshot.exists()) {
             const data = docSnapshot.data();
-            console.log('Permissions data:', data); // Add this line
-            setUserPermissions(Array.isArray(data.permissions) ? data.permissions : []);
+            // Extract only the permissions array from the document
+            setUserPermissions(data.permissions || []);
           } else {
             setUserPermissions([]);
           }
@@ -69,8 +69,7 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   
     fetchPermissions();
     return () => unsubscribe();
-  }, []);
-  
+  }, []);  
   const menuItems = [
     {
       icon: FileText,
