@@ -1,6 +1,6 @@
 import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
-
+ 
 export const getUserPermissions = async (userId) => {
   try {
     const userDoc = await getDoc(doc(db, 'user_roles', userId));
