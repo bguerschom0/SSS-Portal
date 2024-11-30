@@ -5,7 +5,7 @@ import {
   BadgeCheck, BarChart, Clock, Settings, Bell, Key, 
   Users, UserPlus
 } from 'lucide-react';
-import { auth } from '../../../firebase/config';
+import { auth } from '../../firebase/config';
 import { getUserPermissions } from '../../../utils/firebaseUtils';
 
 const menuItems = [
