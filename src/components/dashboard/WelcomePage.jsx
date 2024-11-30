@@ -44,10 +44,12 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
 
     const unsubscribe = onSnapshot(
       doc(db, 'user_roles', auth.currentUser.uid),
-      (doc) => {
-        if (doc.exists()) {
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          const data = docSnapshot.data();
+          // Convert permissions array to structured object
           const permissions = {};
-          doc.data().permissions?.forEach(perm => {
+          data.permissions?.forEach(perm => {
             const [category, action] = perm.split('_');
             if (!permissions[category]) {
               permissions[category] = [];
@@ -56,6 +58,10 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
           });
           setUserPermissions(permissions);
         }
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching user permissions:", error);
         setLoading(false);
       }
     );
@@ -140,8 +146,18 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   }));
 
   const handleSubItemClick = (path, subItem) => {
-    onNavigate(path, subItem);
+    if (onNavigate) {
+      onNavigate(path, subItem);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
@@ -234,81 +250,71 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
         </motion.div>
 
         <div className="max-w-7xl mx-auto">
-          {loading ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-8"
-            >
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto"></div>
-            </motion.div>
-          ) : (
-            <motion.div 
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              initial="hidden"
-              animate="visible"
-            >
-              {authorizedMenuItems.map((item, index) => (
-                <motion.div
-                  key={index}
-                  custom={index}
-                  variants={cardVariants}
-                  whileHover="hover"
-                  onClick={() => handleCardClick(index)}
-                  className={`bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer group
-                    ${item.subItems.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}
-                >
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="p-3 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors">
-                        <item.icon className="h-6 w-6 text-emerald-600" />
-                      </div>
-                      {item.subItems.length > 0 && (
-                        <motion.div
-                          animate={{ rotate: expandedCard === index ? 180 : 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <ChevronDown className="h-5 w-5 text-gray-400 group-hover:text-emerald-600" />
-                        </motion.div>
-                      )}
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            initial="hidden"
+            animate="visible"
+          >
+            {authorizedMenuItems.map((item, index) => (
+              <motion.div
+                key={index}
+                custom={index}
+                variants={cardVariants}
+                whileHover="hover"
+                onClick={() => handleCardClick(index)}
+                className={`bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer group
+                  ${item.subItems.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors">
+                      <item.icon className="h-6 w-6 text-emerald-600" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">{item.text}</h3>
-                    <p className="text-sm text-gray-500">
-                      {item.subItems.length} actions available
-                    </p>
-                  </div>
-
-                  <AnimatePresence>
-                    {expandedCard === index && item.subItems.length > 0 && (
+                    {item.subItems.length > 0 && (
                       <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: 'auto' }}
-                        exit={{ height: 0 }}
+                        animate={{ rotate: expandedCard === index ? 180 : 0 }}
                         transition={{ duration: 0.3 }}
-                        className="border-t border-gray-100 bg-gray-50"
                       >
-                        <div className="p-4 space-y-1">
-                          {item.subItems.map((subItem, subIndex) => (
-                            <motion.button
-                              key={subIndex}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSubItemClick(item.path, subItem);
-                              }}
-                              whileHover={{ x: 4 }}
-                              className="w-full text-left text-sm px-4 py-2 rounded-lg text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                            >
-                              {subItem}
-                            </motion.button>
-                          ))}
-                        </div>
+                        <ChevronDown className="h-5 w-5 text-gray-400 group-hover:text-emerald-600" />
                       </motion.div>
                     )}
-                  </AnimatePresence>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">{item.text}</h3>
+                  <p className="text-sm text-gray-500">
+                    {item.subItems.length} actions available
+                  </p>
+                </div>
+
+                <AnimatePresence>
+                  {expandedCard === index && item.subItems.length > 0 && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: 'auto' }}
+                      exit={{ height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="border-t border-gray-100 bg-gray-50"
+                    >
+                      <div className="p-4 space-y-1">
+                        {item.subItems.map((subItem, subIndex) => (
+                          <motion.button
+                            key={subIndex}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSubItemClick(item.path, subItem);
+                            }}
+                            whileHover={{ x: 4 }}
+                            className="w-full text-left text-sm px-4 py-2 rounded-lg text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                          >
+                            {subItem}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </div>
     </div>
