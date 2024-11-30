@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Search, AlertCircle } from 'lucide-react';
 import { db } from '../../../firebase/config';
-import { collection, getDocs, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 
 const UserPermissions = () => {
   const [selectedUser, setSelectedUser] = useState(null);
@@ -22,37 +22,44 @@ const UserPermissions = () => {
     user_management: ['View Users', 'User Permissions']
   };
 
-  // Fetch users and their permissions
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const rolesSnap = await getDocs(collection(db, 'user_roles'));
-        
-        const rolesData = {};
-        rolesSnap.forEach(doc => {
-          rolesData[doc.id] = doc.data();
-        });
+  const fetchUsers = async () => {
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const rolesSnap = await getDocs(collection(db, 'user_roles'));
+      
+      const rolesData = {};
+      rolesSnap.forEach(doc => {
+        rolesData[doc.id] = doc.data();
+      });
 
-        const usersData = [];
-        usersSnap.forEach(doc => {
-          usersData.push({
-            id: doc.id,
-            ...doc.data(),
-            role: rolesData[doc.id]?.role || 'user',
-            permissions: rolesData[doc.id]?.permissions || []
-          });
+      const usersData = [];
+      usersSnap.forEach(doc => {
+        usersData.push({
+          id: doc.id,
+          ...doc.data(),
+          role: rolesData[doc.id]?.role || 'user',
+          permissions: rolesData[doc.id]?.permissions || []
         });
+      });
 
-        setUsers(usersData);
-      } catch (error) {
-        console.error('Error fetching users:', error);
+      setUsers(usersData);
+      
+      // Update selected user if exists
+      if (selectedUser) {
+        const updatedSelectedUser = usersData.find(u => u.id === selectedUser.id);
+        if (updatedSelectedUser) {
+          setSelectedUser(updatedSelectedUser);
+        }
       }
-      setLoading(false);
-    };
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
 
+  useEffect(() => {
     fetchUsers();
+    const interval = setInterval(fetchUsers, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handlePermissionChange = async (category, permission) => {
@@ -76,30 +83,10 @@ const UserPermissions = () => {
 
     try {
       setLoading(true);
-
-      // Update in database
       await updateDoc(doc(db, 'user_roles', selectedUser.id), {
         permissions: updatedPermissions
       });
-
-      // Update local state
-      setSelectedUser(prev => ({
-        ...prev,
-        permissions: updatedPermissions
-      }));
-
-      setUsers(prev => 
-        prev.map(user => 
-          user.id === selectedUser.id 
-            ? { ...user, permissions: updatedPermissions }
-            : user
-        )
-      );
-
-      setMessage({
-        type: 'success',
-        text: `${isEnabled ? 'Revoked' : 'Granted'} ${permission} for ${category}`
-      });
+      await fetchUsers();
     } catch (error) {
       console.error('Error updating permission:', error);
       setMessage({
@@ -152,13 +139,6 @@ const UserPermissions = () => {
               }`}
             >
               <div className="font-medium text-gray-900">{user.email}</div>
-              <div className="text-sm text-gray-500">
-                {user.role === 'admin' ? (
-                  <span className="text-purple-600 font-medium">Admin</span>
-                ) : (
-                  user.role
-                )}
-              </div>
             </button>
           ))}
         </div>
