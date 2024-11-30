@@ -8,52 +8,21 @@ import {
 import { auth, db } from '../../firebase/config';
 import { doc, onSnapshot } from 'firebase/firestore';
 
-const PERMISSION_MAPPING = {
-  stakeholder: {
-    base: 'stakeholder',
-    actions: {
-      'New Request': 'new_request',
-      'Update': 'update',
-      'Pending': 'pending'
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: i => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.1,
+      duration: 0.5,
+      ease: "easeOut"
     }
-  },
-  background_check: {
-    base: 'background_check',
-    actions: {
-      'New Request': 'new_request',
-      'Update': 'update',
-      'Pending': 'pending'
-    }
-  },
-  badge_request: {
-    base: 'badge_request',
-    actions: {
-      'New Request': 'new_request',
-      'Pending': 'pending'
-    }
-  },
-  access_request: {
-    base: 'access_request',
-    actions: {
-      'New Request': 'new_request',
-      'Update': 'update',
-      'Pending': 'pending'
-    }
-  },
-  attendance: {
-    base: 'attendance',
-    actions: {
-      'New Request': 'new_request',
-      'Update': 'update',
-      'Pending': 'pending'
-    }
-  },
-  visitors: {
-    base: 'visitors',
-    actions: {
-      'New Request': 'new_request',
-      'Update': 'update',
-      'Pending': 'pending'
+  }),
+  hover: {
+    scale: 1.02,
+    transition: {
+      duration: 0.2
     }
   }
 };
@@ -84,7 +53,7 @@ const menuItems = [
     icon: Key,
     text: 'Access Request',
     subItems: ['New Request', 'Update', 'Pending'],
-    path: 'access_request',
+    path: 'access',
     permission: 'access_request'
   },
   {
@@ -100,34 +69,22 @@ const menuItems = [
     subItems: ['New Request', 'Update', 'Pending'],
     path: 'visitors',
     permission: 'visitors'
+  },
+  {
+    icon: BarChart,
+    text: 'Reports',
+    subItems: ['SHR Report', 'BCR Report', 'BR Report', 'Access Report', 'Attendance Report', 'Visitors Report'],
+    path: 'reports',
+    permission: 'reports'
   }
 ];
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: i => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.1,
-      duration: 0.5,
-      ease: "easeOut"
-    }
-  }),
-  hover: {
-    scale: 1.02,
-    transition: {
-      duration: 0.2
-    }
-  }
-};
 
 const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [expandedCard, setExpandedCard] = useState(null);
   const [notifications, setNotifications] = useState(0);
-  const [userPermissions, setUserPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [permissionObject, setPermissionObject] = useState({});
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -137,66 +94,58 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   useEffect(() => {
     let unsubscribe = () => {};
 
-    const fetchPermissions = async () => {
-      if (!auth.currentUser?.uid) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        unsubscribe = onSnapshot(
-          doc(db, 'user_roles', auth.currentUser.uid),
-          (docSnapshot) => {
-            if (docSnapshot.exists()) {
-              const data = docSnapshot.data();
-              const permissionsArray = Array.isArray(data?.permissions) 
-                ? [...data.permissions] 
-                : [];
-              console.log('Permissions loaded:', permissionsArray);
-              setUserPermissions(permissionsArray);
-            } else {
-              setUserPermissions([]);
-            }
-            setLoading(false);
-          }
-        );
-      } catch (error) {
-        console.error('Error fetching permissions:', error);
-        setUserPermissions([]);
-        setLoading(false);
-      }
+    const parsePermissions = (permissionArray) => {
+      const permObj = {};
+      permissionArray.forEach(perm => {
+        const [category, action] = perm.split('_');
+        if (!permObj[category]) permObj[category] = [];
+        permObj[category].push(action);
+      });
+      return permObj;
     };
 
-    fetchPermissions();
+    if (auth.currentUser?.uid) {
+      unsubscribe = onSnapshot(
+        doc(db, 'user_roles', auth.currentUser.uid),
+        (docSnapshot) => {
+          if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            const permissions = data.permissions || [];
+            setPermissionObject(parsePermissions(permissions));
+          }
+          setLoading(false);
+        },
+        (error) => {
+          console.error("Error fetching user permissions:", error);
+          setLoading(false);
+        }
+      );
+    } else {
+      setLoading(false);
+    }
+
     return () => unsubscribe();
   }, []);
 
-  const checkUserPermissions = (permissions, menuItem) => {
-    const mapping = PERMISSION_MAPPING[menuItem.permission];
-    if (!mapping) return [];
+  const getAuthorizedMenuItems = () => {
+    if (userRole === 'admin') return menuItems;
 
-    return menuItem.subItems.filter(subItem => {
-      const requiredPermission = `${mapping.base}_${mapping.actions[subItem]}`;
-      return permissions.includes(requiredPermission);
+    return menuItems.filter(item => {
+      const categoryPermissions = permissionObject[item.permission] || [];
+      if (categoryPermissions.length === 0) return false;
+
+      const availableSubItems = item.subItems.filter(subItem => {
+        const actionKey = subItem.toLowerCase().replace(' ', '_');
+        return categoryPermissions.includes(actionKey);
+      });
+
+      if (availableSubItems.length === 0) return false;
+      return { ...item, subItems: availableSubItems };
     });
   };
 
-  const authorizedMenuItems = menuItems.filter(item => {
-    const allowedSubItems = checkUserPermissions(userPermissions, item);
-    return allowedSubItems.length > 0;
-  }).map(item => ({
-    ...item,
-    subItems: checkUserPermissions(userPermissions, item)
-  }));
-
   const handleCardClick = (index) => {
     setExpandedCard(expandedCard === index ? null : index);
-  };
-
-  const handleSubItemClick = (path, subItem) => {
-    if (onNavigate) {
-      onNavigate(path, subItem);
-    }
   };
 
   const getGreeting = () => {
@@ -204,6 +153,12 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
     if (hour < 12) return 'Good Morning';
     if (hour < 18) return 'Good Afternoon';
     return 'Good Evening';
+  };
+
+  const handleSubItemClick = (path, subItem) => {
+    if (onNavigate) {
+      onNavigate(path, subItem);
+    }
   };
 
   if (loading) {
@@ -214,12 +169,19 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
     );
   }
 
+  const authorizedMenuItems = getAuthorizedMenuItems();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
+      {/* Top Navigation Bar */}
       <div className="fixed top-0 right-0 left-0 h-16 bg-white shadow-sm z-50">
         <div className="h-full px-6 mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
+            <img 
+              src="/logo.png"
+              alt="Logo"
+              className="h-8 w-auto"
+            />
             <span className="text-xl font-semibold text-gray-800">SSS Portal</span>
           </div>
 
@@ -234,6 +196,29 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
                 })}
               </span>
             </div>
+
+            <motion.div 
+              className="relative cursor-pointer"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Bell className="h-5 w-5 text-gray-500 hover:text-emerald-600 transition-colors" />
+              {notifications > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs flex items-center justify-center rounded-full">
+                  {notifications}
+                </span>
+              )}
+            </motion.div>
+
+            <motion.div
+              className="cursor-pointer"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Settings className="h-5 w-5 text-gray-500 hover:text-emerald-600 transition-colors" />
+            </motion.div>
+
+            <div className="h-6 w-px bg-gray-200" />
 
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-2">
@@ -259,6 +244,7 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
         </div>
       </div>
 
+      {/* Main Content */}
       <div className="pt-24 px-6 pb-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -295,12 +281,14 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
                     <div className="p-3 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors">
                       <item.icon className="h-6 w-6 text-emerald-600" />
                     </div>
-                    <motion.div
-                      animate={{ rotate: expandedCard === index ? 180 : 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <ChevronDown className="h-5 w-5 text-gray-400 group-hover:text-emerald-600" />
-                    </motion.div>
+                    {item.subItems.length > 0 && (
+                      <motion.div
+                        animate={{ rotate: expandedCard === index ? 180 : 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <ChevronDown className="h-5 w-5 text-gray-400 group-hover:text-emerald-600" />
+                      </motion.div>
+                    )}
                   </div>
                   <h3 className="text-lg font-semibold text-gray-800 mb-2">{item.text}</h3>
                   <p className="text-sm text-gray-500">
