@@ -38,36 +38,39 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
   useEffect(() => {
     let unsubscribe = () => {};
-
+  
     const fetchPermissions = () => {
       if (!auth.currentUser?.uid) {
         setLoading(false);
         return;
       }
-
+  
       unsubscribe = onSnapshot(
         doc(db, 'user_roles', auth.currentUser.uid),
         (docSnapshot) => {
           if (docSnapshot.exists()) {
             const data = docSnapshot.data();
-            setUserPermissions(data.permissions || []);
+            console.log('Permissions data:', data); // Add this line
+            setUserPermissions(Array.isArray(data.permissions) ? data.permissions : []);
+          } else {
+            setUserPermissions([]);
           }
           setLoading(false);
         },
         (error) => {
           console.error("Error fetching user permissions:", error);
+          setUserPermissions([]);
           setLoading(false);
         }
       );
     };
-
+  
     fetchPermissions();
     return () => unsubscribe();
   }, []);
-
+  
   const menuItems = [
     {
       icon: FileText,
