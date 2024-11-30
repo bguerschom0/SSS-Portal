@@ -10,7 +10,6 @@ const UserPermissions = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [detailedPermissions, setDetailedPermissions] = useState({});
 
   const permissions = {
     stakeholder: ['New Request', 'Update', 'Pending'],
@@ -23,61 +22,42 @@ const UserPermissions = () => {
     user_management: ['View Users', 'User Permissions']
   };
 
+  // Fetch users and their permissions
   useEffect(() => {
-    const fetchUsersAndPermissions = async () => {
+    const fetchUsers = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        const unsubscribeUsers = onSnapshot(collection(db, 'users'), async (snapshot) => {
-          const usersData = [];
-          const permissionsData = {};
-
-          // Get user roles in a separate query
-          const rolesSnapshot = await getDocs(collection(db, 'user_roles'));
-          const rolesMap = {};
-          rolesSnapshot.forEach(doc => {
-            rolesMap[doc.id] = doc.data();
-          });
-
-          snapshot.forEach(doc => {
-            const userData = {
-              id: doc.id,
-              ...doc.data(),
-              role: rolesMap[doc.id]?.role || 'user',
-              permissions: rolesMap[doc.id]?.permissions || []
-            };
-            usersData.push(userData);
-
-            // Structure permissions for detailed view
-            const userPermissions = {};
-            userData.permissions.forEach(perm => {
-              const [category, action] = perm.split('_');
-              if (!userPermissions[category]) {
-                userPermissions[category] = [];
-              }
-              userPermissions[category].push(action);
-            });
-            permissionsData[doc.id] = userPermissions;
-          });
-
-          setUsers(usersData);
-          setDetailedPermissions(permissionsData);
-          setLoading(false);
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const rolesSnap = await getDocs(collection(db, 'user_roles'));
+        
+        const rolesData = {};
+        rolesSnap.forEach(doc => {
+          rolesData[doc.id] = doc.data();
         });
 
-        return () => unsubscribeUsers();
+        const usersData = [];
+        usersSnap.forEach(doc => {
+          usersData.push({
+            id: doc.id,
+            ...doc.data(),
+            role: rolesData[doc.id]?.role || 'user',
+            permissions: rolesData[doc.id]?.permissions || []
+          });
+        });
+
+        setUsers(usersData);
       } catch (error) {
         console.error('Error fetching users:', error);
-        setLoading(false);
       }
+      setLoading(false);
     };
 
-    fetchUsersAndPermissions();
+    fetchUsers();
   }, []);
 
   const handlePermissionChange = async (category, permission) => {
     if (!selectedUser) return;
 
-    // If user is admin, show message and return
     if (selectedUser.role === 'admin') {
       setMessage({
         type: 'info',
@@ -96,11 +76,10 @@ const UserPermissions = () => {
 
     try {
       setLoading(true);
-      
-      // Update in Firestore
+
+      // Update in database
       await updateDoc(doc(db, 'user_roles', selectedUser.id), {
-        permissions: updatedPermissions,
-        updatedAt: new Date()
+        permissions: updatedPermissions
       });
 
       // Update local state
@@ -109,20 +88,17 @@ const UserPermissions = () => {
         permissions: updatedPermissions
       }));
 
-      // Update detailed permissions
-      setDetailedPermissions(prev => ({
-        ...prev,
-        [selectedUser.id]: {
-          ...prev[selectedUser.id],
-          [category]: isEnabled
-            ? prev[selectedUser.id]?.[category]?.filter(p => p !== permission)
-            : [...(prev[selectedUser.id]?.[category] || []), permission]
-        }
-      }));
+      setUsers(prev => 
+        prev.map(user => 
+          user.id === selectedUser.id 
+            ? { ...user, permissions: updatedPermissions }
+            : user
+        )
+      );
 
       setMessage({
         type: 'success',
-        text: `${isEnabled ? 'Revoked' : 'Granted'} ${permission} permission for ${category}`
+        text: `${isEnabled ? 'Revoked' : 'Granted'} ${permission} for ${category}`
       });
     } catch (error) {
       console.error('Error updating permission:', error);
@@ -163,10 +139,8 @@ const UserPermissions = () => {
         </div>
       </div>
 
-      {/* User List and Permissions Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* User List */}
-        <div className="md:col-span-1 space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
+        <div className="md:col-span-1 space-y-2">
           {filteredUsers.map(user => (
             <button
               key={user.id}
@@ -185,23 +159,10 @@ const UserPermissions = () => {
                   user.role
                 )}
               </div>
-              {detailedPermissions[user.id] && (
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {Object.keys(detailedPermissions[user.id]).map(category => (
-                    <span
-                      key={category}
-                      className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full"
-                    >
-                      {category}
-                    </span>
-                  ))}
-                </div>
-              )}
             </button>
           ))}
         </div>
 
-        {/* Permissions Grid */}
         <div className="md:col-span-3">
           {selectedUser ? (
             <div className="bg-white rounded-lg shadow-sm p-6">
@@ -215,13 +176,13 @@ const UserPermissions = () => {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {Object.entries(permissions).map(([category, perms], categoryIndex) => (
+                  {Object.entries(permissions).map(([category, perms]) => (
                     <div key={category} className="space-y-2">
                       <h4 className="font-medium text-gray-700 capitalize">
                         {category.replace('_', ' ')}
                       </h4>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {perms.map((permission, permIndex) => (
+                        {perms.map(permission => (
                           <label
                             key={permission}
                             className={`flex items-center p-2 rounded border transition-colors cursor-pointer
@@ -255,7 +216,6 @@ const UserPermissions = () => {
         </div>
       </div>
 
-      {/* Notification Message */}
       {message.text && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
