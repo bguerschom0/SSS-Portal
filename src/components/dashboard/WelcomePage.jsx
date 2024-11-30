@@ -8,25 +8,6 @@ import {
 import { auth, db } from '../../firebase/config';
 import { doc, onSnapshot } from 'firebase/firestore';
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: i => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.1,
-      duration: 0.5,
-      ease: "easeOut"
-    }
-  }),
-  hover: {
-    scale: 1.02,
-    transition: {
-      duration: 0.2
-    }
-  }
-};
-
 const menuItems = [
   {
     icon: FileText,
@@ -79,12 +60,31 @@ const menuItems = [
   }
 ];
 
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: i => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.1,
+      duration: 0.5,
+      ease: "easeOut"
+    }
+  }),
+  hover: {
+    scale: 1.02,
+    transition: {
+      duration: 0.2
+    }
+  }
+};
+
 const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [expandedCard, setExpandedCard] = useState(null);
   const [notifications, setNotifications] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [permissionObject, setPermissionObject] = useState({});
+  const [userPermissions, setUserPermissions] = useState([]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -94,24 +94,14 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   useEffect(() => {
     let unsubscribe = () => {};
 
-    const parsePermissions = (permissionArray) => {
-      const permObj = {};
-      permissionArray.forEach(perm => {
-        const [category, action] = perm.split('_');
-        if (!permObj[category]) permObj[category] = [];
-        permObj[category].push(action);
-      });
-      return permObj;
-    };
-
     if (auth.currentUser?.uid) {
       unsubscribe = onSnapshot(
         doc(db, 'user_roles', auth.currentUser.uid),
         (docSnapshot) => {
           if (docSnapshot.exists()) {
             const data = docSnapshot.data();
-            const permissions = data.permissions || [];
-            setPermissionObject(parsePermissions(permissions));
+            // Extract permissions array
+            setUserPermissions(data.permissions || []);
           }
           setLoading(false);
         },
@@ -127,22 +117,25 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
     return () => unsubscribe();
   }, []);
 
-  const getAuthorizedMenuItems = () => {
+  const hasPermission = React.useCallback((category, action) => {
+    if (userRole === 'admin') return true;
+    const permissionKey = `${category}_${action}`;
+    return userPermissions.includes(permissionKey);
+  }, [userRole, userPermissions]);
+
+  const getAuthorizedMenuItems = React.useMemo(() => {
     if (userRole === 'admin') return menuItems;
 
     return menuItems.filter(item => {
-      const categoryPermissions = permissionObject[item.permission] || [];
-      if (categoryPermissions.length === 0) return false;
-
       const availableSubItems = item.subItems.filter(subItem => {
         const actionKey = subItem.toLowerCase().replace(' ', '_');
-        return categoryPermissions.includes(actionKey);
+        return hasPermission(item.permission, actionKey);
       });
 
       if (availableSubItems.length === 0) return false;
       return { ...item, subItems: availableSubItems };
-    });
-  };
+    }).filter(Boolean);
+  }, [userPermissions, userRole, hasPermission]);
 
   const handleCardClick = (index) => {
     setExpandedCard(expandedCard === index ? null : index);
@@ -155,12 +148,6 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
     return 'Good Evening';
   };
 
-  const handleSubItemClick = (path, subItem) => {
-    if (onNavigate) {
-      onNavigate(path, subItem);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
@@ -168,8 +155,6 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
       </div>
     );
   }
-
-  const authorizedMenuItems = getAuthorizedMenuItems();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
@@ -267,7 +252,7 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
             initial="hidden"
             animate="visible"
           >
-            {authorizedMenuItems.map((item, index) => (
+            {getAuthorizedMenuItems.map((item, index) => (
               <motion.div
                 key={index}
                 custom={index}
@@ -311,7 +296,7 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
                             key={subIndex}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleSubItemClick(item.path, subItem);
+                              onNavigate?.(item.path, subItem);
                             }}
                             whileHover={{ x: 4 }}
                             className="w-full text-left text-sm px-4 py-2 rounded-lg text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
