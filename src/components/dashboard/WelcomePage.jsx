@@ -8,21 +8,52 @@ import {
 import { auth, db } from '../../firebase/config';
 import { doc, onSnapshot } from 'firebase/firestore';
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: i => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.1,
-      duration: 0.5,
-      ease: "easeOut"
+const PERMISSION_MAPPING = {
+  stakeholder: {
+    base: 'stakeholder',
+    actions: {
+      'New Request': 'new_request',
+      'Update': 'update',
+      'Pending': 'pending'
     }
-  }),
-  hover: {
-    scale: 1.02,
-    transition: {
-      duration: 0.2
+  },
+  background_check: {
+    base: 'background_check',
+    actions: {
+      'New Request': 'new_request',
+      'Update': 'update',
+      'Pending': 'pending'
+    }
+  },
+  badge_request: {
+    base: 'badge_request',
+    actions: {
+      'New Request': 'new_request',
+      'Pending': 'pending'
+    }
+  },
+  access_request: {
+    base: 'access_request',
+    actions: {
+      'New Request': 'new_request',
+      'Update': 'update',
+      'Pending': 'pending'
+    }
+  },
+  attendance: {
+    base: 'attendance',
+    actions: {
+      'New Request': 'new_request',
+      'Update': 'update',
+      'Pending': 'pending'
+    }
+  },
+  visitors: {
+    base: 'visitors',
+    actions: {
+      'New Request': 'new_request',
+      'Update': 'update',
+      'Pending': 'pending'
     }
   }
 };
@@ -53,7 +84,7 @@ const menuItems = [
     icon: Key,
     text: 'Access Request',
     subItems: ['New Request', 'Update', 'Pending'],
-    path: 'access',
+    path: 'access_request',
     permission: 'access_request'
   },
   {
@@ -71,6 +102,25 @@ const menuItems = [
     permission: 'visitors'
   }
 ];
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: i => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.1,
+      duration: 0.5,
+      ease: "easeOut"
+    }
+  }),
+  hover: {
+    scale: 1.02,
+    transition: {
+      duration: 0.2
+    }
+  }
+};
 
 const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -121,28 +171,22 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
     return () => unsubscribe();
   }, []);
 
-  const hasPermissionFor = (basePermission, action) => {
-    const permissionKey = `${basePermission}_${action.toLowerCase().replace(' ', '_')}`;
-    return userPermissions.includes(permissionKey);
+  const checkUserPermissions = (permissions, menuItem) => {
+    const mapping = PERMISSION_MAPPING[menuItem.permission];
+    if (!mapping) return [];
+
+    return menuItem.subItems.filter(subItem => {
+      const requiredPermission = `${mapping.base}_${mapping.actions[subItem]}`;
+      return permissions.includes(requiredPermission);
+    });
   };
 
   const authorizedMenuItems = menuItems.filter(item => {
-    const hasAnyPermission = userPermissions.some(perm => 
-      perm.startsWith(item.permission)
-    );
-    
-    if (!hasAnyPermission) return false;
-    
-    const availableSubItems = item.subItems.filter(subItem => 
-      hasPermissionFor(item.permission, subItem)
-    );
-    
-    return availableSubItems.length > 0;
+    const allowedSubItems = checkUserPermissions(userPermissions, item);
+    return allowedSubItems.length > 0;
   }).map(item => ({
     ...item,
-    subItems: item.subItems.filter(subItem => 
-      hasPermissionFor(item.permission, subItem)
-    )
+    subItems: checkUserPermissions(userPermissions, item)
   }));
 
   const handleCardClick = (index) => {
