@@ -6,7 +6,7 @@ import {
   Users, UserPlus
 } from 'lucide-react';
 import { auth } from '../../firebase/config';
-import { getUserPermissions } from '../../../utils/firebaseUtils';
+import { getUserPermissions } from '../../utils/firebaseUtils';
 
 const menuItems = [
   {
