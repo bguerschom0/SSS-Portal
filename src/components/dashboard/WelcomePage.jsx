@@ -47,9 +47,11 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
       (docSnapshot) => {
         if (docSnapshot.exists()) {
           const data = docSnapshot.data();
-          // Convert permissions array to structured object
+          // Make sure we're working with an array of permissions
+          const permissionArray = Array.isArray(data.permissions) ? data.permissions : [];
+          
           const permissions = {};
-          data.permissions?.forEach(perm => {
+          permissionArray.forEach(perm => {
             const [category, action] = perm.split('_');
             if (!permissions[category]) {
               permissions[category] = [];
@@ -135,15 +137,8 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   // Filter menu items based on permissions
   const authorizedMenuItems = menuItems.filter(item => {
     if (userRole === 'admin') return true;
-    return userPermissions[item.permission]?.length > 0;
-  }).map(item => ({
-    ...item,
-    subItems: item.subItems.filter(subItem => {
-      if (userRole === 'admin') return true;
-      const actionKey = subItem.replace(' ', '_').toLowerCase();
-      return userPermissions[item.permission]?.includes(actionKey);
-    })
-  }));
+    return userPermissions[item.permission] && userPermissions[item.permission].length > 0;
+  });
 
   const handleSubItemClick = (path, subItem) => {
     if (onNavigate) {
@@ -166,7 +161,7 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
         <div className="h-full px-6 mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <img 
-              src="/api/placeholder/32/32"
+              src="/logo.png"
               alt="Logo"
               className="h-8 w-auto"
             />
