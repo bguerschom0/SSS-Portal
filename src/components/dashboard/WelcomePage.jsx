@@ -27,6 +27,51 @@ const cardVariants = {
   }
 };
 
+const menuItems = [
+  {
+    icon: FileText,
+    text: 'Stake Holder Request',
+    subItems: ['New Request', 'Update', 'Pending'],
+    path: 'stakeholder',
+    permission: 'stakeholder'
+  },
+  {
+    icon: UserCheck,
+    text: 'Background Check Request',
+    subItems: ['New Request', 'Update', 'Pending'],
+    path: 'background',
+    permission: 'background_check'
+  },
+  {
+    icon: BadgeCheck,
+    text: 'Badge Request',
+    subItems: ['New Request', 'Pending'],
+    path: 'badge',
+    permission: 'badge_request'
+  },
+  {
+    icon: Key,
+    text: 'Access Request',
+    subItems: ['New Request', 'Update', 'Pending'],
+    path: 'access',
+    permission: 'access_request'
+  },
+  {
+    icon: Users,
+    text: 'Attendance',
+    subItems: ['New Request', 'Update', 'Pending'],
+    path: 'attendance',
+    permission: 'attendance'
+  },
+  {
+    icon: UserPlus,
+    text: 'Visitors Management',
+    subItems: ['New Request', 'Update', 'Pending'],
+    path: 'visitors',
+    permission: 'visitors'
+  }
+];
+
 const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [expandedCard, setExpandedCard] = useState(null);
@@ -38,93 +83,76 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
   useEffect(() => {
     let unsubscribe = () => {};
-  
-    const fetchPermissions = () => {
+
+    const fetchPermissions = async () => {
       if (!auth.currentUser?.uid) {
         setLoading(false);
         return;
       }
-  
-      unsubscribe = onSnapshot(
-        doc(db, 'user_roles', auth.currentUser.uid),
-        (docSnapshot) => {
-          if (docSnapshot.exists()) {
-            const data = docSnapshot.data();
-            // Extract only the permissions array
-            const permissionsArray = data?.permissions || [];
-            setUserPermissions(permissionsArray);
-          } else {
-            setUserPermissions([]);
+
+      try {
+        unsubscribe = onSnapshot(
+          doc(db, 'user_roles', auth.currentUser.uid),
+          (docSnapshot) => {
+            if (docSnapshot.exists()) {
+              const data = docSnapshot.data();
+              const permissionsArray = Array.isArray(data?.permissions) 
+                ? [...data.permissions] 
+                : [];
+              console.log('Permissions loaded:', permissionsArray);
+              setUserPermissions(permissionsArray);
+            } else {
+              setUserPermissions([]);
+            }
+            setLoading(false);
           }
-          setLoading(false);
-        },
-        (error) => {
-          console.error("Error fetching user permissions:", error);
-          setUserPermissions([]);
-          setLoading(false);
-        }
-      );
+        );
+      } catch (error) {
+        console.error('Error fetching permissions:', error);
+        setUserPermissions([]);
+        setLoading(false);
+      }
     };
-  
+
     fetchPermissions();
     return () => unsubscribe();
-  }, []);  
-  const menuItems = [
-    {
-      icon: FileText,
-      text: 'Stake Holder Request',
-      subItems: ['New Request', 'Update', 'Pending'],
-      path: 'stakeholder',
-      permission: 'stakeholder'
-    },
-    {
-      icon: UserCheck,
-      text: 'Background Check Request',
-      subItems: ['New Request', 'Update', 'Pending'],
-      path: 'background',
-      permission: 'background_check'
-    },
-    {
-      icon: BadgeCheck,
-      text: 'Badge Request',
-      subItems: ['New Request', 'Pending'],
-      path: 'badge',
-      permission: 'badge_request'
-    },
-    {
-      icon: Key,
-      text: 'Access Request',
-      subItems: ['New Request', 'Update', 'Pending'],
-      path: 'access',
-      permission: 'access_request'
-    },
-    {
-      icon: Users,
-      text: 'Attendance',
-      subItems: ['New Request', 'Update', 'Pending'],
-      path: 'attendance',
-      permission: 'attendance'
-    },
-    {
-      icon: UserPlus,
-      text: 'Visitors Management',
-      subItems: ['New Request', 'Update', 'Pending'],
-      path: 'visitors',
-      permission: 'visitors'
-    },
-    {
-      icon: BarChart,
-      text: 'Reports',
-      subItems: ['SHR Report', 'BCR Report', 'BR Report', 'Access Report', 'Attendance Report', 'Visitors Report'],
-      path: 'reports',
-      permission: 'reports'
-    }
-  ];
+  }, []);
+
+  const hasPermissionFor = (basePermission, action) => {
+    const permissionKey = `${basePermission}_${action.toLowerCase().replace(' ', '_')}`;
+    return userPermissions.includes(permissionKey);
+  };
+
+  const authorizedMenuItems = menuItems.filter(item => {
+    const hasAnyPermission = userPermissions.some(perm => 
+      perm.startsWith(item.permission)
+    );
+    
+    if (!hasAnyPermission) return false;
+    
+    const availableSubItems = item.subItems.filter(subItem => 
+      hasPermissionFor(item.permission, subItem)
+    );
+    
+    return availableSubItems.length > 0;
+  }).map(item => ({
+    ...item,
+    subItems: item.subItems.filter(subItem => 
+      hasPermissionFor(item.permission, subItem)
+    )
+  }));
 
   const handleCardClick = (index) => {
     setExpandedCard(expandedCard === index ? null : index);
+  };
+
+  const handleSubItemClick = (path, subItem) => {
+    if (onNavigate) {
+      onNavigate(path, subItem);
+    }
   };
 
   const getGreeting = () => {
@@ -132,37 +160,6 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
     if (hour < 12) return 'Good Morning';
     if (hour < 18) return 'Good Afternoon';
     return 'Good Evening';
-  };
-
-  const authorizedMenuItems = menuItems.filter(item => {
-    // Check if user has any permissions for this menu item
-    const hasPermission = userPermissions.some(perm => 
-      perm.startsWith(item.permission)
-    );
-    
-    if (!hasPermission) return false;
-    
-    // Filter subItems based on specific permissions
-    const availableSubItems = item.subItems.filter(subItem => {
-      const permissionKey = `${item.permission}_${subItem.toLowerCase().replace(' ', '_')}`;
-      return userPermissions.includes(permissionKey);
-    });
-    
-    // Only show cards that have at least one accessible subItem
-    return availableSubItems.length > 0;
-  }).map(item => ({
-    ...item,
-    // Only include subItems the user has permission for
-    subItems: item.subItems.filter(subItem => {
-      const permissionKey = `${item.permission}_${subItem.toLowerCase().replace(' ', '_')}`;
-      return userPermissions.includes(permissionKey);
-    })
-  }));
-
-  const handleSubItemClick = (path, subItem) => {
-    if (onNavigate) {
-      onNavigate(path, subItem);
-    }
   };
 
   if (loading) {
@@ -175,15 +172,10 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
-      {/* Top Navigation Bar */}
       <div className="fixed top-0 right-0 left-0 h-16 bg-white shadow-sm z-50">
         <div className="h-full px-6 mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <img 
-              src="/logo.png"
-              alt="Logo"
-              className="h-8 w-auto"
-            />
+            <img src="/logo.png" alt="Logo" className="h-8 w-auto" />
             <span className="text-xl font-semibold text-gray-800">SSS Portal</span>
           </div>
 
@@ -198,29 +190,6 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
                 })}
               </span>
             </div>
-
-            <motion.div 
-              className="relative cursor-pointer"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Bell className="h-5 w-5 text-gray-500 hover:text-emerald-600 transition-colors" />
-              {notifications > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs flex items-center justify-center rounded-full">
-                  {notifications}
-                </span>
-              )}
-            </motion.div>
-
-            <motion.div
-              className="cursor-pointer"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Settings className="h-5 w-5 text-gray-500 hover:text-emerald-600 transition-colors" />
-            </motion.div>
-
-            <div className="h-6 w-px bg-gray-200" />
 
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-2">
@@ -246,7 +215,6 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="pt-24 px-6 pb-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -276,22 +244,19 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
                 variants={cardVariants}
                 whileHover="hover"
                 onClick={() => handleCardClick(index)}
-                className={`bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer group
-                  ${item.subItems.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}
+                className="bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer group"
               >
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="p-3 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors">
                       <item.icon className="h-6 w-6 text-emerald-600" />
                     </div>
-                    {item.subItems.length > 0 && (
-                      <motion.div
-                        animate={{ rotate: expandedCard === index ? 180 : 0 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <ChevronDown className="h-5 w-5 text-gray-400 group-hover:text-emerald-600" />
-                      </motion.div>
-                    )}
+                    <motion.div
+                      animate={{ rotate: expandedCard === index ? 180 : 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <ChevronDown className="h-5 w-5 text-gray-400 group-hover:text-emerald-600" />
+                    </motion.div>
                   </div>
                   <h3 className="text-lg font-semibold text-gray-800 mb-2">{item.text}</h3>
                   <p className="text-sm text-gray-500">
@@ -300,7 +265,7 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
                 </div>
 
                 <AnimatePresence>
-                  {expandedCard === index && item.subItems.length > 0 && (
+                  {expandedCard === index && (
                     <motion.div
                       initial={{ height: 0 }}
                       animate={{ height: 'auto' }}
