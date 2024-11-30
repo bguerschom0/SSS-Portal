@@ -10,7 +10,7 @@ const UserPermissions = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [accessGranted, setAccessGranted] = useState({});
+  const [permissionsMap, setPermissionsMap] = useState({});
 
   const permissions = {
     stakeholder: ['New Request', 'Update', 'Pending'],
@@ -19,37 +19,55 @@ const UserPermissions = () => {
     access_request: ['New Request', 'Update', 'Pending'],
     attendance: ['New Request', 'Update', 'Pending'],
     visitors: ['New Request', 'Update', 'Pending'],
-    reports: ['View Reports', 'Export Reports']
+    reports: ['View Reports', 'Export Reports'],
+    user_management: ['View Users', 'Add User', 'User Permissions']
   };
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const usersData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+    const unsubscribeUsers = onSnapshot(collection(db, 'users'), async (snapshot) => {
+      const usersData = [];
+      const permissionsData = {};
+
+      // Get user roles in a separate query
+      const rolesSnapshot = await getDocs(collection(db, 'user_roles'));
+      const rolesMap = {};
+      rolesSnapshot.forEach(doc => {
+        rolesMap[doc.id] = doc.data();
+      });
+
+      snapshot.forEach(doc => {
+        const userData = {
+          id: doc.id,
+          ...doc.data(),
+          role: rolesMap[doc.id]?.role || 'user',
+          permissions: rolesMap[doc.id]?.permissions || []
+        };
+        usersData.push(userData);
+        permissionsData[doc.id] = rolesMap[doc.id]?.permissions || [];
+      });
+
       setUsers(usersData);
+      setPermissionsMap(permissionsData);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeUsers();
   }, []);
-
-  useEffect(() => {
-    if (selectedUser?.permissions) {
-      const granted = {};
-      selectedUser.permissions.forEach(perm => {
-        const [category] = perm.split('_');
-        granted[category] = true;
-      });
-      setAccessGranted(granted);
-    }
-  }, [selectedUser]);
 
   const handlePermissionChange = async (category, permission) => {
     if (!selectedUser) return;
 
+    // If user is admin, show message and return
+    if (selectedUser.role === 'admin') {
+      setMessage({
+        type: 'info',
+        text: 'Admins automatically have access to all permissions'
+      });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      return;
+    }
+
     const permissionKey = `${category}_${permission}`;
-    const userPermissions = selectedUser.permissions || [];
+    const userPermissions = permissionsMap[selectedUser.id] || [];
     const updatedPermissions = userPermissions.includes(permissionKey)
       ? userPermissions.filter(p => p !== permissionKey)
       : [...userPermissions, permissionKey];
@@ -60,27 +78,32 @@ const UserPermissions = () => {
         updatedAt: new Date()
       });
 
-      // Update access granted status
-      const hasPermissionInCategory = updatedPermissions.some(p => p.startsWith(category));
-      setAccessGranted(prev => ({
+      // Update local state for immediate UI update
+      setPermissionsMap(prev => ({
         ...prev,
-        [category]: hasPermissionInCategory
+        [selectedUser.id]: updatedPermissions
       }));
 
-      setMessage({ 
-        type: 'success', 
-        text: `${hasPermissionInCategory ? 'Access granted to' : 'Access revoked from'} ${category.replace('_', ' ')}`
+      setMessage({
+        type: 'success',
+        text: `${userPermissions.includes(permissionKey) ? 'Revoked' : 'Granted'} ${permission} permission for ${category}`
       });
 
-      // Clear message after 3 seconds
       setTimeout(() => setMessage({ type: '', text: '' }), 3000);
-
     } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: 'Error updating permissions' 
+      console.error('Error updating permission:', error);
+      setMessage({
+        type: 'error',
+        text: 'Failed to update permission'
       });
     }
+  };
+
+  const getPermissionColor = (index, total) => {
+    // Generate colors from emerald-50 to emerald-200 based on index
+    const baseHue = 160; // emerald base hue
+    const lightness = 95 - (index / total) * 15; // varies from 95% to 80%
+    return `hsl(${baseHue}, 84%, ${lightness}%)`;
   };
 
   const filteredUsers = users.filter(user =>
@@ -104,7 +127,7 @@ const UserPermissions = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* User List */}
-        <div className="md:col-span-1 space-y-2">
+        <div className="md:col-span-1 space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
           {filteredUsers.map(user => (
             <button
               key={user.id}
@@ -116,14 +139,11 @@ const UserPermissions = () => {
               }`}
             >
               <div className="font-medium text-gray-900">{user.email}</div>
-              <div className="text-sm text-gray-500">{user.role}</div>
-              <div className="mt-1 text-xs">
-                {Object.entries(accessGranted).map(([category, hasAccess]) => 
-                  hasAccess && (
-                    <span key={category} className="inline-block mr-2 px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-                      {category}
-                    </span>
-                  )
+              <div className="text-sm text-gray-500">
+                {user.role === 'admin' ? (
+                  <span className="text-purple-600 font-medium">Admin</span>
+                ) : (
+                  user.role
                 )}
               </div>
             </button>
@@ -138,38 +158,47 @@ const UserPermissions = () => {
                 Permissions for {selectedUser.email}
               </h3>
 
-              <div className="space-y-6">
-                {Object.entries(permissions).map(([category, perms]) => (
-                  <div key={category} className="space-y-2">
-                    <h4 className="font-medium text-gray-700 capitalize">
-                      {category.replace('_', ' ')}
-                    </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      {perms.map(permission => {
-                        const permissionKey = `${category}_${permission}`;
-                        const isEnabled = selectedUser.permissions?.includes(permissionKey);
+              {selectedUser.role === 'admin' ? (
+                <div className="bg-purple-50 text-purple-800 p-4 rounded-lg mb-4">
+                  This user is an admin and has full access to all features.
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {Object.entries(permissions).map(([category, perms], categoryIndex) => (
+                    <div key={category} className="space-y-2">
+                      <h4 className="font-medium text-gray-700 capitalize">
+                        {category.replace('_', ' ')}
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {perms.map((permission, permIndex) => {
+                          const permissionKey = `${category}_${permission}`;
+                          const isEnabled = permissionsMap[selectedUser.id]?.includes(permissionKey);
+                          const backgroundColor = getPermissionColor(
+                            categoryIndex * perms.length + permIndex,
+                            Object.keys(permissions).length * 3
+                          );
 
-                        return (
-                          <label
-                            key={permission}
-                            className={`flex items-center p-2 rounded border
-                              ${isEnabled ? 'bg-emerald-50 border-emerald-200' : 'border-gray-200'}
-                              hover:bg-emerald-50 transition-colors cursor-pointer`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isEnabled}
-                              onChange={() => handlePermissionChange(category, permission)}
-                              className="text-emerald-500 border-gray-300 rounded focus:ring-emerald-500"
-                            />
-                            <span className="ml-2 text-sm text-gray-700">{permission}</span>
-                          </label>
-                        );
-                      })}
+                          return (
+                            <label
+                              key={permission}
+                              className="flex items-center p-2 rounded border hover:bg-emerald-50 transition-colors cursor-pointer"
+                              style={{ backgroundColor: isEnabled ? backgroundColor : 'transparent' }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isEnabled}
+                                onChange={() => handlePermissionChange(category, permission)}
+                                className="text-emerald-500 border-gray-300 rounded focus:ring-emerald-500"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">{permission}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-12 bg-white rounded-lg shadow-sm">
@@ -188,7 +217,9 @@ const UserPermissions = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
           className={`fixed bottom-4 right-4 p-4 rounded-lg flex items-center space-x-2 ${
-            message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+            message.type === 'success' ? 'bg-green-50 text-green-800' : 
+            message.type === 'error' ? 'bg-red-50 text-red-800' :
+            'bg-purple-50 text-purple-800'
           }`}
         >
           <AlertCircle className="h-5 w-5" />
