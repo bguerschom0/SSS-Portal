@@ -52,8 +52,9 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
         (docSnapshot) => {
           if (docSnapshot.exists()) {
             const data = docSnapshot.data();
-            // Extract only the permissions array from the document
-            setUserPermissions(data.permissions || []);
+            // Extract only the permissions array
+            const permissionsArray = data?.permissions || [];
+            setUserPermissions(permissionsArray);
           } else {
             setUserPermissions([]);
           }
