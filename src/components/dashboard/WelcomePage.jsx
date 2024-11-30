@@ -5,8 +5,8 @@ import {
   BadgeCheck, BarChart, Clock, Settings, Bell, Key, 
   Users, UserPlus
 } from 'lucide-react';
-import { auth, db } from '../../firebase/config';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { auth } from '../../../firebase/config';
+import { getUserPermissions } from '../../../utils/firebaseUtils';
 
 const menuItems = [
   {
@@ -92,50 +92,47 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   }, []);
 
   useEffect(() => {
-    let unsubscribe = () => {};
+    let mounted = true;
 
-    if (auth.currentUser?.uid) {
-      unsubscribe = onSnapshot(
-        doc(db, 'user_roles', auth.currentUser.uid),
-        (docSnapshot) => {
-          if (docSnapshot.exists()) {
-            const data = docSnapshot.data();
-            // Extract permissions array
-            setUserPermissions(data.permissions || []);
-          }
-          setLoading(false);
-        },
-        (error) => {
-          console.error("Error fetching user permissions:", error);
+    const fetchPermissions = async () => {
+      if (!auth.currentUser?.uid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { permissions } = await getUserPermissions(auth.currentUser.uid);
+        if (mounted) {
+          setUserPermissions(permissions);
+        }
+      } catch (error) {
+        console.error("Error fetching permissions:", error);
+      } finally {
+        if (mounted) {
           setLoading(false);
         }
-      );
-    } else {
-      setLoading(false);
-    }
+      }
+    };
 
-    return () => unsubscribe();
+    fetchPermissions();
+    return () => { mounted = false; };
   }, []);
 
-  const hasPermission = React.useCallback((category, action) => {
-    if (userRole === 'admin') return true;
-    const permissionKey = `${category}_${action}`;
-    return userPermissions.includes(permissionKey);
-  }, [userRole, userPermissions]);
-
-  const getAuthorizedMenuItems = React.useMemo(() => {
+  const authorizedMenuItems = React.useMemo(() => {
     if (userRole === 'admin') return menuItems;
 
     return menuItems.filter(item => {
       const availableSubItems = item.subItems.filter(subItem => {
-        const actionKey = subItem.toLowerCase().replace(' ', '_');
-        return hasPermission(item.permission, actionKey);
+        const permissionKey = `${item.permission}_${subItem.toLowerCase().replace(' ', '_')}`;
+        return userPermissions.includes(permissionKey);
       });
 
-      if (availableSubItems.length === 0) return false;
-      return { ...item, subItems: availableSubItems };
+      return availableSubItems.length > 0 ? {
+        ...item,
+        subItems: availableSubItems
+      } : false;
     }).filter(Boolean);
-  }, [userPermissions, userRole, hasPermission]);
+  }, [userPermissions, userRole]);
 
   const handleCardClick = (index) => {
     setExpandedCard(expandedCard === index ? null : index);
@@ -158,7 +155,7 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
-      {/* Top Navigation Bar */}
+      {/* Navigation Bar */}
       <div className="fixed top-0 right-0 left-0 h-16 bg-white shadow-sm z-50">
         <div className="h-full px-6 mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -252,7 +249,7 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
             initial="hidden"
             animate="visible"
           >
-            {getAuthorizedMenuItems.map((item, index) => (
+            {authorizedMenuItems.map((item, index) => (
               <motion.div
                 key={index}
                 custom={index}
