@@ -135,12 +135,25 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   };
 
   const authorizedMenuItems = menuItems.filter(item => {
-    if (userRole === 'admin') return true;
-    return userPermissions.some(perm => perm.startsWith(item.permission));
+    // Check if user has any permissions for this menu item
+    const hasPermission = userPermissions.some(perm => 
+      perm.startsWith(item.permission)
+    );
+    
+    if (!hasPermission) return false;
+    
+    // Filter subItems based on specific permissions
+    const availableSubItems = item.subItems.filter(subItem => {
+      const permissionKey = `${item.permission}_${subItem.toLowerCase().replace(' ', '_')}`;
+      return userPermissions.includes(permissionKey);
+    });
+    
+    // Only show cards that have at least one accessible subItem
+    return availableSubItems.length > 0;
   }).map(item => ({
     ...item,
+    // Only include subItems the user has permission for
     subItems: item.subItems.filter(subItem => {
-      if (userRole === 'admin') return true;
       const permissionKey = `${item.permission}_${subItem.toLowerCase().replace(' ', '_')}`;
       return userPermissions.includes(permissionKey);
     })
