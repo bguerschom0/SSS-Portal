@@ -31,7 +31,7 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [expandedCard, setExpandedCard] = useState(null);
   const [notifications, setNotifications] = useState(0);
-  const [userPermissions, setUserPermissions] = useState({});
+  const [userPermissions, setUserPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,34 +40,31 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
   }, []);
 
   useEffect(() => {
-    if (!auth.currentUser?.uid) return;
+    let unsubscribe = () => {};
 
-    const unsubscribe = onSnapshot(
-      doc(db, 'user_roles', auth.currentUser.uid),
-      (docSnapshot) => {
-        if (docSnapshot.exists()) {
-          const data = docSnapshot.data();
-          // Make sure we're working with an array of permissions
-          const permissionArray = Array.isArray(data.permissions) ? data.permissions : [];
-          
-          const permissions = {};
-          permissionArray.forEach(perm => {
-            const [category, action] = perm.split('_');
-            if (!permissions[category]) {
-              permissions[category] = [];
-            }
-            permissions[category].push(action);
-          });
-          setUserPermissions(permissions);
-        }
+    const fetchPermissions = () => {
+      if (!auth.currentUser?.uid) {
         setLoading(false);
-      },
-      (error) => {
-        console.error("Error fetching user permissions:", error);
-        setLoading(false);
+        return;
       }
-    );
 
+      unsubscribe = onSnapshot(
+        doc(db, 'user_roles', auth.currentUser.uid),
+        (docSnapshot) => {
+          if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            setUserPermissions(data.permissions || []);
+          }
+          setLoading(false);
+        },
+        (error) => {
+          console.error("Error fetching user permissions:", error);
+          setLoading(false);
+        }
+      );
+    };
+
+    fetchPermissions();
     return () => unsubscribe();
   }, []);
 
@@ -134,11 +131,17 @@ const WelcomePage = ({ username, onLogout, userRole, onNavigate }) => {
     return 'Good Evening';
   };
 
-  // Filter menu items based on permissions
   const authorizedMenuItems = menuItems.filter(item => {
     if (userRole === 'admin') return true;
-    return userPermissions[item.permission] && userPermissions[item.permission].length > 0;
-  });
+    return userPermissions.some(perm => perm.startsWith(item.permission));
+  }).map(item => ({
+    ...item,
+    subItems: item.subItems.filter(subItem => {
+      if (userRole === 'admin') return true;
+      const permissionKey = `${item.permission}_${subItem.toLowerCase().replace(' ', '_')}`;
+      return userPermissions.includes(permissionKey);
+    })
+  }));
 
   const handleSubItemClick = (path, subItem) => {
     if (onNavigate) {
