@@ -139,6 +139,13 @@ const UserPermissions = () => {
               }`}
             >
               <div className="font-medium text-gray-900">{user.email}</div>
+              <div className="text-sm text-gray-500">
+                {user.role === 'admin' ? (
+                  <span className="text-purple-600 font-medium">Admin</span>
+                ) : (
+                  'User'
+                )}
+              </div>
             </button>
           ))}
         </div>
